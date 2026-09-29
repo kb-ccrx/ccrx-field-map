@@ -141,6 +141,41 @@ body{font-family:var(--body);color:var(--ink);}
 .info-card ol{margin:8px 0 14px 18px;}
 .info-card button{width:100%;margin-top:14px;font-weight:600;padding:12px;border-radius:10px;border:none;background:var(--navy);color:#fff;cursor:pointer;}
 [hidden]{display:none!important;}
+
+/* ---- Route planner screen ---- */
+#routeScreen{position:fixed;inset:0;z-index:2200;background:var(--bg);display:none;flex-direction:column;}
+#routeScreen.show{display:flex;}
+#routeHeader{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 10px;background:var(--navy);color:#fff;flex:0 0 auto;}
+#routeHeader h1{font-family:var(--display);font-size:18px;}
+#routeClose{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:18px;cursor:pointer;}
+#routeTabs{display:flex;gap:6px;padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--line);flex:0 0 auto;}
+.rtab{flex:1;font-family:var(--body);font-weight:600;font-size:13px;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-dim);cursor:pointer;}
+.rtab.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+#routePanels{flex:1 1 auto;min-height:0;overflow:hidden;position:relative;}
+.rpanel{display:none;position:absolute;inset:0;overflow-y:auto;}
+.rpanel.active{display:block;}
+#routePickMap{position:absolute;inset:0;}
+#routePanelList{padding:12px 16px;}
+#routeSearch{width:100%;font-family:var(--body);font-size:14px;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--surface);margin-bottom:10px;}
+.route-check-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line);font-size:13.5px;}
+.route-check-row input{width:18px;height:18px;flex:0 0 auto;}
+.route-check-sub{margin-left:auto;font-size:11px;color:var(--ink-dim);}
+#routePanelManual{padding:16px;}
+#routePanelManual input{width:100%;font-family:var(--body);font-size:14px;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--surface);margin-bottom:10px;}
+#routePanelManual button{width:100%;font-weight:600;padding:12px;border-radius:10px;border:none;background:var(--navy);color:#fff;cursor:pointer;}
+#routeStopsWrap{flex:0 0 auto;max-height:42vh;overflow-y:auto;background:var(--surface);border-top:1px solid var(--line);padding:10px 14px calc(env(safe-area-inset-bottom,0px) + 14px);}
+#routeStopsHeader{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+#routeStopsCount{font-size:12.5px;font-weight:600;color:var(--ink-dim);text-transform:uppercase;letter-spacing:.3px;}
+#rebuildBtn{font-family:var(--body);font-weight:600;font-size:12.5px;padding:7px 12px;border-radius:999px;border:1px solid var(--navy);background:transparent;color:var(--navy);cursor:pointer;}
+.route-stop-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);background:var(--surface);}
+.route-stop-row.dragging{opacity:.4;}
+.route-stop-row.done{opacity:.45;text-decoration:line-through;}
+.route-stop-num{flex:0 0 20px;font-size:12px;font-weight:700;color:var(--ink-dim);}
+.route-stop-drag{flex:0 0 auto;color:var(--ink-dim);cursor:grab;font-size:14px;letter-spacing:-2px;}
+.route-stop-name{flex:1;font-size:13.5px;color:var(--ink);}
+.route-stop-done,.route-stop-remove{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:none;background:var(--surface-2);color:var(--ink-dim);font-size:14px;cursor:pointer;}
+.route-leg-btn{display:block;text-align:center;font-family:var(--body);font-weight:600;font-size:13.5px;padding:12px;border-radius:10px;background:var(--navy);color:#fff;text-decoration:none;margin-top:10px;}
+.route-legs-note{font-size:11.5px;color:var(--ink-dim);margin-top:8px;line-height:1.5;}
 </style>
 </head>
 <body>
@@ -180,6 +215,7 @@ body{font-family:var(--body);color:var(--ink);}
 <div id="controls">
   <button class="fab" id="fitAllBtn" title="Zoom to fit all pins">&#8981;</button>
   <button class="fab" id="locateBtn" title="Show my location">&#9678;</button>
+  <button class="fab" id="routeBtn" title="Plan a route">&#129517;</button>
 </div>
 
 <div id="sheetBackdrop"></div>
@@ -201,6 +237,40 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved API key</button>
+  </div>
+</div>
+
+<div id="routeScreen">
+  <div id="routeHeader">
+    <h1>Plan a Route</h1>
+    <button id="routeClose" title="Close" aria-label="Close">&times;</button>
+  </div>
+  <div id="routeTabs">
+    <button class="rtab active" data-tab="map">Map</button>
+    <button class="rtab" data-tab="list">Checklist</button>
+    <button class="rtab" data-tab="manual">Add address</button>
+  </div>
+  <div id="routePanels">
+    <div id="routePanelMap" class="rpanel active">
+      <div id="routePickMap"></div>
+    </div>
+    <div id="routePanelList" class="rpanel">
+      <input id="routeSearch" placeholder="Search by name or address…">
+      <div id="routeChecklist"></div>
+    </div>
+    <div id="routePanelManual" class="rpanel">
+      <input id="manualName" placeholder="Name (optional)">
+      <input id="manualAddress" placeholder="Address">
+      <button id="manualAdd">Add stop</button>
+    </div>
+  </div>
+  <div id="routeStopsWrap">
+    <div id="routeStopsHeader">
+      <span id="routeStopsCount">0 stops selected</span>
+      <button id="rebuildBtn" hidden>Rebuild from here</button>
+    </div>
+    <div id="routeStopsList"></div>
+    <div id="routeLegs"></div>
   </div>
 </div>
 
@@ -342,6 +412,7 @@ body{font-family:var(--body);color:var(--ink);}
     $("sheetClose").onclick = closeSheet;
     $("locateBtn").onclick = toggleLocate;
     $("fitAllBtn").onclick = fitAll;
+    wireRoute();
 
     loadData(false);
     setInterval(function(){ loadData(true); }, 5*60*1000);
@@ -537,6 +608,273 @@ body{font-family:var(--body);color:var(--ink);}
       $("locateBtn").classList.remove("active"); watchId=null;
       alert("Couldn't get your location: " + err.message);
     }, {enableHighAccuracy:true, maximumAge:10000});
+  }
+
+  // ==================== Route planner ====================
+  // A separate mode, sharing this page's Airtable data and pin styling.
+  // routeStops: [{key, name, address, lat, lng, done}]
+  var routeStops = [];
+  var routeMap = null, routeMarkersLayer = null, routeMarkers = {};
+  var manualIdCounter = 1;
+  var dragSrcIndex = null;
+
+  function $all(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function stopKeyForClinic(c){ return "clinic:"+c.id; }
+
+  function openRouteScreen(){
+    $("routeScreen").classList.add("show");
+    initRouteMap();
+    renderChecklist();
+    renderRouteStops();
+    setTimeout(function(){ if (routeMap) routeMap.invalidateSize(); }, 50);
+  }
+  function closeRouteScreen(){ $("routeScreen").classList.remove("show"); }
+
+  function initRouteMap(){
+    if (!routeMap){
+      routeMap = L.map("routePickMap", { zoomControl:false }).setView([28.63,-81.38], 11);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom:19, subdomains:"abc",
+        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(routeMap);
+      L.control.zoom({position:"bottomright"}).addTo(routeMap);
+      routeMarkersLayer = L.layerGroup().addTo(routeMap);
+    }
+    routeMarkersLayer.clearLayers();
+    routeMarkers = {};
+    allRecords.forEach(function(c){
+      var s = stageColor[c.stage] || {color:"#8a8a8a", shape:"circle"};
+      var icon = L.divIcon({ className:"pin", html:pinSVG(s, 24), iconSize:[26,26], iconAnchor:[13,13] });
+      var m = L.marker([c.lat,c.lng], {icon:icon});
+      m.on("click", function(){ toggleStopFromClinic(c); });
+      m.addTo(routeMarkersLayer);
+      routeMarkers[c.id] = m;
+    });
+    if (allRecords.length){
+      var bounds = L.latLngBounds(allRecords.map(function(c){ return [c.lat,c.lng]; }));
+      routeMap.fitBounds(bounds, {padding:[30,30], maxZoom:13});
+    }
+    updateRouteMapHighlights();
+  }
+
+  function toggleStopFromClinic(c){
+    var key = stopKeyForClinic(c);
+    var idx = routeStops.findIndex(function(s){ return s.key===key; });
+    if (idx>=0) routeStops.splice(idx,1);
+    else routeStops.push({key:key, name:c.name, address:c.address, lat:c.lat, lng:c.lng, done:false});
+    onStopsChanged();
+  }
+
+  function updateRouteMapHighlights(){
+    var selectedKeys = new Set(routeStops.map(function(s){ return s.key; }));
+    allRecords.forEach(function(c){
+      var m = routeMarkers[c.id];
+      if (!m) return;
+      var el = m.getElement();
+      if (!el) return;
+      el.style.outline = selectedKeys.has(stopKeyForClinic(c)) ? "3px solid #2f6fed" : "none";
+      el.style.borderRadius = "50%";
+    });
+  }
+
+  function renderChecklist(){
+    var wrap = $("routeChecklist");
+    var q = ($("routeSearch").value || "").toLowerCase();
+    wrap.innerHTML = "";
+    var selectedKeys = new Set(routeStops.map(function(s){ return s.key; }));
+    allRecords
+      .filter(function(c){ return !q || (c.name||"").toLowerCase().indexOf(q)>=0 || (c.address||"").toLowerCase().indexOf(q)>=0; })
+      .sort(function(a,b){ return (a.name||"").localeCompare(b.name||""); })
+      .forEach(function(c){
+        var row = document.createElement("label");
+        row.className = "route-check-row";
+        var key = stopKeyForClinic(c);
+        row.innerHTML = '<input type="checkbox" '+(selectedKeys.has(key)?"checked":"")+'><span>'+esc(c.name)+'</span><span class="route-check-sub">'+esc(c.stage||"")+'</span>';
+        row.querySelector("input").onchange = function(){ toggleStopFromClinic(c); };
+        wrap.appendChild(row);
+      });
+  }
+
+  function addManualStop(){
+    var name = $("manualName").value.trim();
+    var address = $("manualAddress").value.trim();
+    if (!address){ alert("Enter an address."); return; }
+    var btn = $("manualAdd");
+    btn.disabled = true; btn.textContent = "Locating…";
+    geocodeAddress(address).then(function(coords){
+      routeStops.push({
+        key:"manual:"+(manualIdCounter++), name:name||address, address:address,
+        lat: coords ? coords.lat : null, lng: coords ? coords.lng : null, done:false
+      });
+      $("manualName").value = ""; $("manualAddress").value = "";
+      btn.disabled = false; btn.textContent = "Add stop";
+      onStopsChanged();
+      if (!coords){
+        alert("Added it, but couldn't pinpoint that address for route ordering. It'll sit at the end of the list for now; try adding city and state if you want it woven into the route.");
+      }
+    });
+  }
+
+  // Free-text address to lat/lng via OpenStreetMap's Nominatim, same map data this page already uses.
+  function geocodeAddress(address){
+    var url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(address);
+    return fetch(url, {headers:{"Accept":"application/json"}})
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(results){
+        if (results && results.length) return {lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon)};
+        return null;
+      })
+      .catch(function(){ return null; });
+  }
+
+  function onStopsChanged(){
+    optimizeRoute();
+    renderRouteStops();
+    updateRouteMapHighlights();
+    renderChecklist();
+  }
+
+  // Nearest-neighbor route order, starting from startLatLng if given, else the first stop.
+  // Manually-entered addresses with no coordinates can't be placed by distance, so they're
+  // kept at the end in the order they were added.
+  function optimizeRoute(startLatLng){
+    var geocoded = routeStops.filter(function(s){ return typeof s.lat==="number" && typeof s.lng==="number"; });
+    var ungeocoded = routeStops.filter(function(s){ return !(typeof s.lat==="number" && typeof s.lng==="number"); });
+    if (geocoded.length < 2){ routeStops = geocoded.concat(ungeocoded); return; }
+    var remaining = geocoded.slice();
+    var ordered = [], cur;
+    if (startLatLng){ cur = startLatLng; }
+    else { ordered.push(remaining.shift()); cur = ordered[0]; }
+    while (remaining.length){
+      var bestIdx=0, bestDist=Infinity;
+      remaining.forEach(function(s,i){
+        var d = haversineMiles(cur.lat, cur.lng, s.lat, s.lng);
+        if (d<bestDist){ bestDist=d; bestIdx=i; }
+      });
+      var next = remaining.splice(bestIdx,1)[0];
+      ordered.push(next);
+      cur = next;
+    }
+    routeStops = ordered.concat(ungeocoded);
+  }
+
+  function haversineMiles(lat1,lng1,lat2,lng2){
+    var R=3958.8, toRad=Math.PI/180;
+    var dLat=(lat2-lat1)*toRad, dLng=(lng2-lng1)*toRad;
+    var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*toRad)*Math.cos(lat2*toRad)*Math.sin(dLng/2)*Math.sin(dLng/2);
+    return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function renderRouteStops(){
+    var wrap = $("routeStopsList");
+    wrap.innerHTML = "";
+    $("routeStopsCount").textContent = routeStops.length + " stop" + (routeStops.length===1?"":"s") + " selected";
+    routeStops.forEach(function(s, i){
+      var row = document.createElement("div");
+      row.className = "route-stop-row" + (s.done ? " done" : "");
+      row.draggable = true;
+      row.dataset.index = i;
+      row.innerHTML =
+        '<span class="route-stop-num">'+(i+1)+'</span>'+
+        '<span class="route-stop-drag">&#8942;&#8942;</span>'+
+        '<span class="route-stop-name">'+esc(s.name)+'</span>'+
+        '<button class="route-stop-done" title="Mark done">&#10003;</button>'+
+        '<button class="route-stop-remove" title="Remove">&times;</button>';
+      row.querySelector(".route-stop-remove").onclick = function(){ routeStops.splice(i,1); onStopsChanged(); };
+      row.querySelector(".route-stop-done").onclick = function(){
+        routeStops[i].done = !routeStops[i].done;
+        row.classList.toggle("done", routeStops[i].done);
+      };
+      wireDrag(row);
+      wrap.appendChild(row);
+    });
+    renderLegs();
+    $("rebuildBtn").hidden = routeStops.length===0;
+  }
+
+  function wireDrag(row){
+    row.addEventListener("dragstart", function(){ dragSrcIndex = +row.dataset.index; row.classList.add("dragging"); });
+    row.addEventListener("dragend", function(){ row.classList.remove("dragging"); });
+    row.addEventListener("dragover", function(e){ e.preventDefault(); });
+    row.addEventListener("drop", function(e){
+      e.preventDefault();
+      var destIndex = +row.dataset.index;
+      if (dragSrcIndex===null || dragSrcIndex===destIndex) return;
+      var moved = routeStops.splice(dragSrcIndex,1)[0];
+      routeStops.splice(destIndex,0,moved);
+      dragSrcIndex = null;
+      renderRouteStops();
+    });
+  }
+
+  // Google Maps caps a route at 10 stops (origin + up to 8 waypoints + destination),
+  // so longer lists are split into consecutive legs.
+  function renderLegs(){
+    var wrap = $("routeLegs");
+    wrap.innerHTML = "";
+    var active = routeStops.filter(function(s){ return !s.done; });
+    if (!active.length) return;
+    var MAX_PER_LEG = 10;
+    var legs = [];
+    for (var i=0;i<active.length;i+=MAX_PER_LEG){ legs.push(active.slice(i, i+MAX_PER_LEG)); }
+    legs.forEach(function(leg, li){
+      var a = document.createElement("a");
+      a.className = "route-leg-btn";
+      a.target = "_blank"; a.rel = "noopener";
+      a.href = buildMapsUrl(leg);
+      a.textContent = legs.length>1 ? "Open Leg "+(li+1)+" in Google Maps ("+leg.length+" stops)" : "Open in Google Maps ("+leg.length+" stops)";
+      wrap.appendChild(a);
+    });
+    if (legs.length>1){
+      var note = document.createElement("div");
+      note.className = "route-legs-note";
+      note.textContent = "Google Maps caps a route at 10 stops, so this is split into " + legs.length + " legs. Finish one, then open the next.";
+      wrap.appendChild(note);
+    }
+  }
+
+  function buildMapsUrl(stops){
+    function q(s){ return encodeURIComponent(s.address || (s.lat+","+s.lng)); }
+    if (stops.length===1) return "https://www.google.com/maps/search/?api=1&query="+q(stops[0]);
+    var origin = q(stops[0]), destination = q(stops[stops.length-1]);
+    var mid = stops.slice(1,-1).map(q).join("|");
+    var url = "https://www.google.com/maps/dir/?api=1&origin="+origin+"&destination="+destination+"&travelmode=driving";
+    if (mid) url += "&waypoints="+mid;
+    return url;
+  }
+
+  // The errand-detour fix: drop completed stops, re-optimize what's left from wherever you are now.
+  function rebuildFromHere(){
+    if (!navigator.geolocation){ alert("This browser doesn't support location."); return; }
+    $("rebuildBtn").textContent = "Locating…";
+    navigator.geolocation.getCurrentPosition(function(pos){
+      $("rebuildBtn").textContent = "Rebuild from here";
+      routeStops = routeStops.filter(function(s){ return !s.done; });
+      optimizeRoute({lat:pos.coords.latitude, lng:pos.coords.longitude});
+      renderRouteStops();
+      updateRouteMapHighlights();
+    }, function(err){
+      $("rebuildBtn").textContent = "Rebuild from here";
+      alert("Couldn't get your location: " + err.message);
+    }, {enableHighAccuracy:true});
+  }
+
+  function wireRoute(){
+    $("routeBtn").onclick = openRouteScreen;
+    $("routeClose").onclick = closeRouteScreen;
+    $all(".rtab").forEach(function(btn){
+      btn.onclick = function(){
+        $all(".rtab").forEach(function(b){ b.classList.remove("active"); });
+        btn.classList.add("active");
+        $all(".rpanel").forEach(function(p){ p.classList.remove("active"); });
+        var panel = $("routePanel" + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1));
+        panel.classList.add("active");
+        if (btn.dataset.tab==="map") setTimeout(function(){ if (routeMap) routeMap.invalidateSize(); }, 50);
+      };
+    });
+    $("routeSearch").oninput = renderChecklist;
+    $("manualAdd").onclick = addManualStop;
+    $("rebuildBtn").onclick = rebuildFromHere;
   }
 })();
 </script>
