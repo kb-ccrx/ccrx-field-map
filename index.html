@@ -105,6 +105,9 @@ body{font-family:var(--body);color:var(--ink);}
 .sheet-fit{display:inline-block;font-size:11px;font-weight:600;color:var(--ink-dim);border:1px solid var(--line);
   border-radius:999px;padding:4px 9px;margin-left:6px;}
 #sheet h2{font-family:var(--display);font-size:21px;color:var(--ink);margin-bottom:2px;line-height:1.2;}
+.sheet-name-link{color:inherit;text-decoration:none;display:inline-flex;align-items:baseline;gap:6px;}
+.sheet-name-link:active{opacity:.6;}
+.sheet-open-icon{font-size:14px;color:var(--navy);font-family:var(--body);}
 .sheet-next{background:var(--surface-2);border-left:3px solid var(--navy);border-radius:8px;padding:8px 10px;margin-top:10px;}
 .sheet-next .lbl{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-dim);margin-bottom:2px;}
 .sheet-next .val{color:var(--ink);font-size:13.5px;line-height:1.45;}
@@ -211,7 +214,8 @@ body{font-family:var(--body);color:var(--ink);}
     name:"fldav47bI4XT5dkb3", stage:"fldNvkkh5aUeIpmZT", fit:"fldKZUvH2TdM7Ld2o",
     address:"fldWFIcsf0IHReFtx", lat:"flduCAwh8GOme6Pgg", lng:"fldagkN1z79b4wQn4",
     phone:"fldAx8T2wEb6NwmWv", website:"fldyexgBLmumzPu1S", notes:"fldZWk1z8NKDy16Tr",
-    nextAction:"fldgNCT1yZp5NWxHB", lastContact:"fld7uhRSvyAOwRa3H", contacts:"fldw47jnu1OR7ZL45"
+    nextAction:"fldgNCT1yZp5NWxHB", lastContact:"fld7uhRSvyAOwRa3H", contacts:"fldw47jnu1OR7ZL45",
+    qualified:"fld0SiKvkO12UfoEg", interest:"flde1WCOTSjvRAi6V", owner:"fldz8AKEDGn1TuKtW"
   };
   var CF = { name:"fld5SWDkRHf3epyYD", clinic:"fldInKK6h0cRnOAC7" }; // Contacts field IDs
 
@@ -403,6 +407,9 @@ body{font-family:var(--body);color:var(--ink);}
           id:rec.id, name:f[F.name]||"(unnamed)",
           stage: (f[F.stage] && f[F.stage].name) || (typeof f[F.stage]==="string" ? f[F.stage] : null),
           fit: (f[F.fit] && f[F.fit].name) || (typeof f[F.fit]==="string" ? f[F.fit] : null),
+          qualified: (f[F.qualified] && f[F.qualified].name) || (typeof f[F.qualified]==="string" ? f[F.qualified] : null),
+          interest: (f[F.interest] && f[F.interest].name) || (typeof f[F.interest]==="string" ? f[F.interest] : null),
+          owner: singleSelectListToText(f[F.owner]),
           address:f[F.address], lat:f[F.lat], lng:f[F.lng],
           phone:f[F.phone], website:f[F.website], notes:f[F.notes],
           nextAction:f[F.nextAction], lastContact:f[F.lastContact],
@@ -463,11 +470,14 @@ body{font-family:var(--body);color:var(--ink);}
     var mapsQ = encodeURIComponent(c.address || (c.lat+","+c.lng));
     var html = '<div class="sheet-stage" style="background:'+s.color+'">'+ (c.stage||"Unknown") +'</div>';
     if (c.fit) html += '<span class="sheet-fit">'+c.fit+'</span>';
-    html += '<h2>'+esc(c.name)+'</h2>';
+    html += '<h2><a class="sheet-name-link" target="_blank" rel="noopener" href="'+airtableRecordUrl(c.id)+'">'+esc(c.name)+' <span class="sheet-open-icon">↗</span></a></h2>';
     if (c.nextAction) html += '<div class="sheet-next"><div class="lbl">Next Step</div><div class="val">'+esc(c.nextAction)+'</div></div>';
     if (c.address) html += row("Address", esc(c.address));
     if (c.website) html += row("Website", '<a href="'+esc(normalizeUrl(c.website))+'" target="_blank" rel="noopener">'+esc(c.website)+'</a>');
     if (c.contactNames) html += row("Contacts", esc(c.contactNames));
+    if (c.qualified) html += row("Qualified", esc(c.qualified));
+    if (c.interest) html += row("Interest", esc(c.interest));
+    if (c.owner) html += row("Owner", esc(c.owner));
     if (c.lastContact) html += row("Last Contact", esc(c.lastContact));
     if (c.notes) html += '<div class="sheet-notes">'+esc(c.notes)+'</div>';
     html += '<div class="sheet-actions">';
@@ -482,6 +492,12 @@ body{font-family:var(--body);color:var(--ink);}
   function row(label,val){ return '<div class="sheet-row"><div class="lbl">'+label+'</div><div class="val">'+val+'</div></div>'; }
   function esc(s){ var d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
   function normalizeUrl(u){ return /^https?:\/\//i.test(u) ? u : "https://"+u; }
+  function singleSelectListToText(v){
+    if (!v) return null;
+    if (Array.isArray(v)) return v.map(function(x){ return (x && x.name) || (typeof x==="string" ? x : ""); }).filter(Boolean).join(", ") || null;
+    return (v && v.name) || (typeof v==="string" ? v : null);
+  }
+  function airtableRecordUrl(recordId){ return "https://airtable.com/"+BASE_ID+"/"+CLINICS_TABLE+"/"+recordId; }
   function closeSheet(){ $("sheet").classList.remove("show"); $("sheetBackdrop").classList.remove("show"); }
 
   // ---- Locate ----
