@@ -75,7 +75,8 @@ body{font-family:var(--body);color:var(--ink);}
 #chips::-webkit-scrollbar{display:none;}
 .chip{flex:0 0 auto;font-family:var(--body);font-size:12.5px;font-weight:600;padding:7px 12px;border-radius:999px;
   background:rgba(255,255,255,.92);color:var(--ink);border:2px solid transparent;white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:6px;}
-.chip .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+.chip .dot{width:14px;height:14px;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;}
+.chip .dot svg{filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));}
 .chip.off{opacity:.4;}
 .chip.all{background:var(--navy);color:#fff;}
 
@@ -92,17 +93,25 @@ body{font-family:var(--body);color:var(--ink);}
 #sheetBackdrop.show{opacity:1;pointer-events:auto;}
 #sheet{position:fixed;left:0;right:0;bottom:0;z-index:1500;background:var(--surface);border-radius:20px 20px 0 0;
   box-shadow:0 -8px 30px rgba(0,0,0,.25);transform:translateY(105%);transition:transform .25s ease;
-  padding:14px 20px calc(env(safe-area-inset-bottom,0px) + 20px);max-height:72vh;overflow-y:auto;}
+  padding:14px 20px calc(env(safe-area-inset-bottom,0px) + 20px);max-height:66.67vh;overflow-y:auto;}
 #sheet.show{transform:translateY(0);}
 .sheet-handle{width:36px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 14px;}
+.sheet-close{position:absolute;top:12px;right:14px;width:30px;height:30px;border-radius:50%;border:none;
+  background:var(--surface-2);color:var(--ink-dim);font-size:18px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;z-index:1;}
+#sheetBody{padding-right:30px;}
 .sheet-stage{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
   padding:5px 10px;border-radius:999px;margin-bottom:10px;color:#fff;}
 .sheet-fit{display:inline-block;font-size:11px;font-weight:600;color:var(--ink-dim);border:1px solid var(--line);
   border-radius:999px;padding:4px 9px;margin-left:6px;}
 #sheet h2{font-family:var(--display);font-size:21px;color:var(--ink);margin-bottom:2px;line-height:1.2;}
+.sheet-next{background:var(--surface-2);border-left:3px solid var(--navy);border-radius:8px;padding:8px 10px;margin-top:10px;}
+.sheet-next .lbl{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-dim);margin-bottom:2px;}
+.sheet-next .val{color:var(--ink);font-size:13.5px;line-height:1.45;}
 .sheet-row{font-size:13.5px;color:var(--ink-dim);line-height:1.5;margin-top:8px;display:flex;gap:8px;}
 .sheet-row .lbl{flex:0 0 78px;color:var(--ink-dim);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;padding-top:2px;}
-.sheet-row .val{flex:1;color:var(--ink);}
+.sheet-row .val{flex:1;color:var(--ink);word-break:break-word;}
+.sheet-row .val a{color:var(--navy);}
 .sheet-notes{background:var(--surface-2);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:13px;line-height:1.55;color:var(--ink);white-space:pre-wrap;}
 .sheet-actions{display:flex;gap:8px;margin-top:16px;}
 .sheet-actions a,.sheet-actions button{flex:1;text-align:center;font-family:var(--body);font-weight:600;font-size:13px;
@@ -168,6 +177,7 @@ body{font-family:var(--body);color:var(--ink);}
 
 <div id="sheetBackdrop"></div>
 <div id="sheet">
+  <button class="sheet-close" id="sheetClose" title="Close" aria-label="Close">&times;</button>
   <div class="sheet-handle"></div>
   <div id="sheetBody"></div>
 </div>
@@ -206,17 +216,45 @@ body{font-family:var(--body);color:var(--ink);}
   var CF = { name:"fld5SWDkRHf3epyYD", clinic:"fldInKK6h0cRnOAC7" }; // Contacts field IDs
 
   var STAGES = [
-    {name:"Target", color:"#e8a33d"},
-    {name:"Attempted Contact", color:"#c9ab52"},
-    {name:"Contacted", color:"#4fb0c6"},
-    {name:"Meeting Scheduled", color:"#2e9e8f"},
-    {name:"Closing", color:"#4c9a5b"},
-    {name:"Signed", color:"#c9a227", star:true},
-    {name:"Parked", color:"#b0413e"},
-    {name:"Not Pursuing", color:"#c97a3d"},
-    {name:"Closed Lost", color:"#8a8a8a"}
+    {name:"Target", color:"#e8a33d", shape:"outline"},
+    {name:"Attempted Contact", color:"#c9ab52", shape:"half"},
+    {name:"Contacted", color:"#4fb0c6", shape:"circle"},
+    {name:"Meeting Scheduled", color:"#2e9e8f", shape:"square"},
+    {name:"Closing", color:"#4c9a5b", shape:"diamond"},
+    {name:"Signed", color:"#c9a227", shape:"star"},
+    {name:"Parked", color:"#b0413e", shape:"pause"},
+    {name:"Not Pursuing", color:"#c97a3d", shape:"triangle"},
+    {name:"Closed Lost", color:"#8a8a8a", shape:"x"}
   ];
   var stageColor = {}; STAGES.forEach(function(s){ stageColor[s.name] = s; });
+
+  // Shape+color pin so status is readable at a glance without the chip legend.
+  // size: pixel box the svg renders in (kept small/consistent for chip use vs marker use)
+  function pinSVG(s, size){
+    var c = s.color, sz = size || 26;
+    switch(s.shape){
+      case "outline": // Target — not yet engaged
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3" fill="#fff" stroke="'+c+'" stroke-width="3.2"/></svg>';
+      case "half": // Attempted Contact — reached out, no response yet
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#fff" stroke="'+c+'" stroke-width="2.2"/><path d="M12 3 A9 9 0 0 1 12 21 Z" fill="'+c+'"/></svg>';
+      case "circle": // Contacted — in conversation
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="'+c+'" stroke="#fff" stroke-width="2.5"/></svg>';
+      case "square": // Meeting Scheduled — on the calendar
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5" fill="'+c+'" stroke="#fff" stroke-width="2.2"/></svg>';
+      case "diamond": // Closing — deal in motion
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><polygon points="12,2 22,12 12,22 2,12" fill="'+c+'" stroke="#fff" stroke-width="2"/></svg>';
+      case "star": // Signed — won
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><polygon points="12,1 15,9 23,9 16.5,14 19,22 12,17 5,22 7.5,14 1,9 9,9" fill="'+c+'" stroke="#fff" stroke-width="1.2"/></svg>';
+      case "pause": // Parked — on hold
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="'+c+'" stroke="#fff" stroke-width="2.2"/><rect x="8.3" y="7.4" width="2.6" height="9.2" rx="1" fill="#fff"/><rect x="13.1" y="7.4" width="2.6" height="9.2" rx="1" fill="#fff"/></svg>';
+      case "triangle": // Not Pursuing — declined
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><polygon points="12,2.5 22,20.5 2,20.5" fill="'+c+'" stroke="#fff" stroke-width="2"/></svg>';
+      case "x": // Closed Lost — dead
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="'+c+'" stroke="#fff" stroke-width="2.2"/><path d="M8.5 8.5 L15.5 15.5 M15.5 8.5 L8.5 15.5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>';
+      default:
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="'+c+'" stroke="#fff" stroke-width="2.5"/></svg>';
+    }
+  }
 
   var tokenKey = "ccrx_map_pat";
   var token = localStorage.getItem(tokenKey);
@@ -264,7 +302,7 @@ body{font-family:var(--body);color:var(--ink);}
     L.control.zoom({position:"bottomright"}).addTo(map);
 
     cluster = L.markerClusterGroup({
-      maxClusterRadius:50,
+      maxClusterRadius:26,
       iconCreateFunction:function(c){
         var n=c.getChildCount();
         var size = n<10?34:n<25?42:50;
@@ -284,6 +322,7 @@ body{font-family:var(--body);color:var(--ink);}
       $("setup").classList.remove("hidden");
     };
     $("sheetBackdrop").onclick = closeSheet;
+    $("sheetClose").onclick = closeSheet;
     $("locateBtn").onclick = toggleLocate;
     $("fitAllBtn").onclick = fitAll;
 
@@ -303,7 +342,7 @@ body{font-family:var(--body);color:var(--ink);}
     STAGES.forEach(function(s){
       var c=document.createElement("div");
       c.className="chip"; c.dataset.stage=s.name;
-      c.innerHTML='<span class="dot" style="background:'+s.color+'"></span>'+s.name;
+      c.innerHTML='<span class="dot" style="background:transparent;display:inline-flex;">'+pinSVG(s,14)+'</span>'+s.name;
       c.onclick=function(){
         if (activeStages.has(s.name)) activeStages.delete(s.name); else activeStages.add(s.name);
         renderChipState(); applyFilter();
@@ -391,14 +430,12 @@ body{font-family:var(--body);color:var(--ink);}
     markersByStage = {};
     allRecords.forEach(function(c){
       if (!c.stage) c.stage = "Unknown";
-      if (!stageColor[c.stage]) stageColor[c.stage] = {color:"#8a8a8a"};
+      if (!stageColor[c.stage]) stageColor[c.stage] = {color:"#8a8a8a", shape:"circle"};
       if (!activeStages.has(c.stage)) activeStages.add(c.stage);
       var s = stageColor[c.stage];
       var icon = L.divIcon({
         className:"pin",
-        html: s.star
-          ? '<svg width="30" height="30" viewBox="0 0 24 24"><polygon points="12,1 15,9 23,9 16.5,14 19,22 12,17 5,22 7.5,14 1,9 9,9" fill="'+s.color+'" stroke="#fff" stroke-width="1.2"/></svg>'
-          : '<svg width="26" height="26" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="'+s.color+'" stroke="#fff" stroke-width="2.5"/></svg>',
+        html: pinSVG(s, s.shape==="star" ? 30 : 26),
         iconSize:[28,28], iconAnchor:[14,14]
       });
       var m = L.marker([c.lat,c.lng], {icon:icon});
@@ -427,10 +464,11 @@ body{font-family:var(--body);color:var(--ink);}
     var html = '<div class="sheet-stage" style="background:'+s.color+'">'+ (c.stage||"Unknown") +'</div>';
     if (c.fit) html += '<span class="sheet-fit">'+c.fit+'</span>';
     html += '<h2>'+esc(c.name)+'</h2>';
+    if (c.nextAction) html += '<div class="sheet-next"><div class="lbl">Next Step</div><div class="val">'+esc(c.nextAction)+'</div></div>';
     if (c.address) html += row("Address", esc(c.address));
-    if (c.contactNames) html += row("Contact", esc(c.contactNames));
+    if (c.website) html += row("Website", '<a href="'+esc(normalizeUrl(c.website))+'" target="_blank" rel="noopener">'+esc(c.website)+'</a>');
+    if (c.contactNames) html += row("Contacts", esc(c.contactNames));
     if (c.lastContact) html += row("Last Contact", esc(c.lastContact));
-    if (c.nextAction) html += row("Next Step", esc(c.nextAction));
     if (c.notes) html += '<div class="sheet-notes">'+esc(c.notes)+'</div>';
     html += '<div class="sheet-actions">';
     html += '<a class="primary" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query='+mapsQ+'">Open in Maps</a>';
@@ -443,6 +481,7 @@ body{font-family:var(--body);color:var(--ink);}
   }
   function row(label,val){ return '<div class="sheet-row"><div class="lbl">'+label+'</div><div class="val">'+val+'</div></div>'; }
   function esc(s){ var d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+  function normalizeUrl(u){ return /^https?:\/\//i.test(u) ? u : "https://"+u; }
   function closeSheet(){ $("sheet").classList.remove("show"); $("sheetBackdrop").classList.remove("show"); }
 
   // ---- Locate ----
