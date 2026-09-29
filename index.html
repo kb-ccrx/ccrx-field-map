@@ -162,6 +162,7 @@ body{font-family:var(--body);color:var(--ink);}
 <div id="countBadge">Loading…</div>
 
 <div id="controls">
+  <button class="fab" id="fitAllBtn" title="Zoom to fit all pins">&#8981;</button>
   <button class="fab" id="locateBtn" title="Show my location">&#9678;</button>
 </div>
 
@@ -224,6 +225,7 @@ body{font-family:var(--body);color:var(--ink);}
   var activeStages = new Set(STAGES.map(function(s){return s.name;}));
   var allRecords = [];
   var markersByStage = {};
+  var hasFitOnce = false;
 
   function $(id){ return document.getElementById(id); }
 
@@ -283,6 +285,7 @@ body{font-family:var(--body);color:var(--ink);}
     };
     $("sheetBackdrop").onclick = closeSheet;
     $("locateBtn").onclick = toggleLocate;
+    $("fitAllBtn").onclick = fitAll;
 
     loadData(false);
     setInterval(function(){ loadData(true); }, 5*60*1000);
@@ -359,8 +362,8 @@ body{font-family:var(--body);color:var(--ink);}
         var f=rec.fields;
         return {
           id:rec.id, name:f[F.name]||"(unnamed)",
-          stage: f[F.stage] && f[F.stage].name,
-          fit: f[F.fit] && f[F.fit].name,
+          stage: (f[F.stage] && f[F.stage].name) || (typeof f[F.stage]==="string" ? f[F.stage] : null),
+          fit: (f[F.fit] && f[F.fit].name) || (typeof f[F.fit]==="string" ? f[F.fit] : null),
           address:f[F.address], lat:f[F.lat], lng:f[F.lng],
           phone:f[F.phone], website:f[F.website], notes:f[F.notes],
           nextAction:f[F.nextAction], lastContact:f[F.lastContact],
@@ -369,6 +372,7 @@ body{font-family:var(--body);color:var(--ink);}
       }).filter(function(c){ return typeof c.lat==="number" && typeof c.lng==="number"; });
       renderMarkers();
       $("countBadge").textContent = allRecords.length + " location" + (allRecords.length===1?"":"s");
+      if (!hasFitOnce && allRecords.length){ hasFitOnce = true; fitAll(); }
     }).catch(function(err){
       if (err && err.authError){
         localStorage.removeItem(tokenKey); token = null;
@@ -386,7 +390,10 @@ body{font-family:var(--body);color:var(--ink);}
     cluster.clearLayers();
     markersByStage = {};
     allRecords.forEach(function(c){
-      var s = stageColor[c.stage] || {color:"#8a8a8a"};
+      if (!c.stage) c.stage = "Unknown";
+      if (!stageColor[c.stage]) stageColor[c.stage] = {color:"#8a8a8a"};
+      if (!activeStages.has(c.stage)) activeStages.add(c.stage);
+      var s = stageColor[c.stage];
       var icon = L.divIcon({
         className:"pin",
         html: s.star
@@ -400,6 +407,11 @@ body{font-family:var(--body);color:var(--ink);}
       (markersByStage[c.stage]=markersByStage[c.stage]||[]).push(m);
     });
     applyFilter();
+  }
+  function fitAll(){
+    if (!allRecords.length) return;
+    var bounds = L.latLngBounds(allRecords.map(function(c){ return [c.lat,c.lng]; }));
+    map.fitBounds(bounds, {padding:[36,36], maxZoom:14});
   }
   function applyFilter(){
     cluster.clearLayers();
