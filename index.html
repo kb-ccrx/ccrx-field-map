@@ -558,8 +558,12 @@ body{font-family:var(--body);color:var(--ink);}
       var url="https://api.airtable.com/v0/"+BASE_ID+"/"+tableId+"?pageSize=100&returnFieldsByFieldId=true";
       fieldIds.forEach(function(f){ url+="&fields[]="+f; });
       if (offset) url+="&offset="+offset;
-      return fetch(url, {headers:{Authorization:"Bearer "+token}})
+      // A hard timeout so a stalled connection surfaces as an error instead of hanging "Loading…" forever.
+      var controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+      var timeoutId = controller ? setTimeout(function(){ controller.abort(); }, 20000) : null;
+      return fetch(url, {headers:{Authorization:"Bearer "+token}, signal: controller ? controller.signal : undefined})
         .then(function(r){
+          if (timeoutId) clearTimeout(timeoutId);
           if(!r.ok){
             var e = new Error("Airtable error "+r.status);
             if (r.status===401 || r.status===403) e.authError = true;
@@ -653,6 +657,8 @@ body{font-family:var(--body);color:var(--ink);}
       }
       $("countBadge").textContent = isRefresh ? "Refresh failed" : "Couldn't load — check connection";
       console.error(err);
+      tasksLoadFailed = true;
+      if ($("tasksScreen").classList.contains("show")) renderTasksScreen();
     });
   }
 
@@ -1174,7 +1180,7 @@ body{font-family:var(--body);color:var(--ink);}
     } else {
       emptyEl.hidden = false;
       if (!dataLoadedOnce) emptyEl.textContent = "Loading…";
-      else if (tasksLoadFailed) emptyEl.textContent = "Couldn't load your Tasks from Airtable. Clinic Next Actions above (if any) still loaded fine — try the refresh icon on the map, or check your key's access.";
+      else if (tasksLoadFailed) emptyEl.textContent = "Couldn't load from Airtable. Close this, check the status badge on the map, and try the refresh icon — or check your key's access.";
       else emptyEl.textContent = "Nothing open. Nice work.";
     }
     updateTasksFooter();
