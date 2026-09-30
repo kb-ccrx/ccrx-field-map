@@ -441,6 +441,7 @@ body{font-family:var(--body);color:var(--ink);}
   var followUpDrafts = {}; // keyed by item key -> {text, date}, the optional "what's next" typed in when checking a box
   var dataLoadedOnce = false; // false until the first successful loadData(), so we never say "nothing open" before we've actually loaded anything
   var tasksLoadFailed = false; // true when the Tasks table specifically failed to load on the last attempt
+  var loadSeq = 0; // bumped each loadData() call so a stale resumed/overlapping fetch can't overwrite a fresher one
 
   function $(id){ return document.getElementById(id); }
 
@@ -532,6 +533,16 @@ body{font-family:var(--body);color:var(--ink);}
 
     loadData(false);
     setInterval(function(){ loadData(true); }, 5*60*1000);
+
+    // Phones freeze a backgrounded tab/PWA — timers (including our fetch timeout) pause too, so a
+    // request that was in flight when you switched away can come back stuck instead of erroring out.
+    // Rather than trying to detect that, just force a fresh load every time the app becomes visible again.
+    document.addEventListener("visibilitychange", function(){
+      if (document.visibilityState === "visible") loadData(true);
+    });
+    window.addEventListener("pageshow", function(e){
+      if (e.persisted) loadData(true);
+    });
   }
 
   function buildChips(){
@@ -610,6 +621,7 @@ body{font-family:var(--body);color:var(--ink);}
   function loadData(isRefresh){
     $("countBadge").textContent = isRefresh ? "Refreshing…" : "Loading…";
     tasksLoadFailed = false;
+    var mySeq = ++loadSeq; // if a resumed/overlapping call finishes after a newer one, ignore its stale result
     Promise.all([
       fetchAll(CLINICS_TABLE, Object.values(F)),
       fetchAll(CONTACTS_TABLE, [CF.name, CF.clinic]),
@@ -622,6 +634,7 @@ body{font-family:var(--body);color:var(--ink);}
         return [];
       })
     ]).then(function(res){
+      if (mySeq !== loadSeq) return; // a newer load already started (e.g. app resumed) — drop this stale result
       var clinics = res[0], contacts = res[1], tasks = res[2];
       var contactsByClinicId = {};
       contacts.forEach(function(rec){
@@ -659,6 +672,7 @@ body{font-family:var(--body);color:var(--ink);}
       dataLoadedOnce = true;
       if ($("tasksScreen").classList.contains("show")) renderTasksScreen();
     }).catch(function(err){
+      if (mySeq !== loadSeq) return; // superseded by a newer load — its own handler already ran
       if (err && err.authError){
         localStorage.removeItem(tokenKey); token = null;
         $("setupReauth").classList.add("show");
