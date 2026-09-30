@@ -183,17 +183,28 @@ body{font-family:var(--body);color:var(--ink);}
 <div id="setup">
   <div class="setup-card">
     <h1>CCRX Field Map</h1>
-    <p>Reads your Clinics live from Airtable. It needs your own Airtable API key to do that, stored only in this browser, never sent anywhere but Airtable.</p>
+    <div id="airtableSetupBlock">
+      <p>Reads your Clinics live from Airtable. It needs your own Airtable API key to do that, stored only in this browser, never sent anywhere but Airtable.</p>
+      <ol>
+        <li>Go to <strong>airtable.com/create/tokens</strong> (on your phone or computer).</li>
+        <li>Create a token named "Field Map", scope <strong>data.records:read</strong>, access to base <strong>CCRX</strong> only.</li>
+        <li>Copy the token (starts with <code>pat...</code>) and paste it below.</li>
+      </ol>
+      <div class="setup-err" id="setupErr"></div>
+      <div class="setup-err" id="setupReauth" style="color:#c99a3e;">Your saved key stopped working (it may have been revoked or expired). Enter a new one below.</div>
+      <input id="tokenInput" type="password" placeholder="pat••••••••••••••••" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <p id="setupAlreadyConnected" hidden style="font-size:13px;color:var(--ink-dim);margin-bottom:14px;">Already connected to Airtable.</p>
+    <p style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:6px;">Map tiles</p>
+    <p>OpenStreetMap's free tile servers block apps that use them repeatedly, so the map background needs its own small free key.</p>
     <ol>
-      <li>Go to <strong>airtable.com/create/tokens</strong> (on your phone or computer).</li>
-      <li>Create a token named "Field Map", scope <strong>data.records:read</strong>, access to base <strong>CCRX</strong> only.</li>
-      <li>Copy the token (starts with <code>pat...</code>) and paste it below.</li>
+      <li>Go to <strong>maptiler.com</strong>, create a free account.</li>
+      <li>Under API Keys, create a key and paste it below.</li>
     </ol>
-    <div class="setup-err" id="setupErr"></div>
-    <div class="setup-err" id="setupReauth" style="color:#c99a3e;">Your saved key stopped working (it may have been revoked or expired). Enter a new one below.</div>
-    <input id="tokenInput" type="password" placeholder="pat••••••••••••••••" autocomplete="off" autocapitalize="off" spellcheck="false">
-    <button id="tokenSave">Connect to Airtable</button>
-    <div class="setup-note">The key lives only in this browser's local storage on this device. Don't send this file to anyone else once you've saved a key in it on your own phone &mdash; that risk is about the file, not this page.</div>
+    <div class="setup-err" id="tileKeyErr"></div>
+    <input id="tileKeyInput" type="text" placeholder="MapTiler key" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button id="tokenSave">Connect</button>
+    <div class="setup-note">Both keys live only in this browser's local storage on this device. Don't send this file to anyone else once you've saved keys in it on your own phone &mdash; that risk is about the file, not this page.</div>
   </div>
 </div>
 
@@ -236,7 +247,7 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Pins are colored by Stage. Tap a chip to hide/show that stage. Tap a pin for details, directions, and a call button. The refresh icon pulls the latest from Airtable; it also auto-refreshes every 5 minutes while open.</p>
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <button id="infoClose">Got it</button>
-    <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved API key</button>
+    <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
 </div>
 
@@ -345,6 +356,8 @@ body{font-family:var(--body);color:var(--ink);}
 
   var tokenKey = "ccrx_map_pat";
   var token = localStorage.getItem(tokenKey);
+  var tileKeyName = "ccrx_map_maptiler_key";
+  var tileKey = localStorage.getItem(tileKeyName);
 
   var map, cluster, meMarker, meCircle, watchId=null;
   var activeStages = new Set(STAGES.map(function(s){return s.name;}));
@@ -354,16 +367,41 @@ body{font-family:var(--body);color:var(--ink);}
 
   function $(id){ return document.getElementById(id); }
 
+  // The map background tile source. MapTiler's free tiles, keyed to the browser-stored key,
+  // since OpenStreetMap's own free tile servers block apps that hit them repeatedly.
+  function makeTileLayer(){
+    return L.tileLayer("https://api.maptiler.com/maps/streets-v4/256/{z}/{x}/{y}.png?key="+tileKey, {
+      maxZoom:19,
+      crossOrigin:true,
+      attribution:'<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>'
+    });
+  }
+
   // ---- Setup flow ----
-  if (token) { $("setup").classList.add("hidden"); boot(); }
+  if (token && tileKey) {
+    $("setup").classList.add("hidden"); boot();
+  } else if (token) {
+    // Airtable's already connected from before; only the new map-tile key is missing.
+    $("airtableSetupBlock").hidden = true;
+    $("setupAlreadyConnected").hidden = false;
+  }
   $("tokenSave").onclick = function(){
+    var tileVal = $("tileKeyInput").value.trim();
+    if (!tileVal) { showTileKeyErr("Enter your MapTiler key."); return; }
+    if (token) {
+      localStorage.setItem(tileKeyName, tileVal); tileKey = tileVal;
+      $("setup").classList.add("hidden");
+      boot();
+      return;
+    }
     var v = $("tokenInput").value.trim();
     if (!v.startsWith("pat")) { showSetupErr("That doesn't look like an Airtable token, it should start with 'pat'."); return; }
-    testToken(v);
+    testToken(v, tileVal);
   };
   function showSetupErr(msg){ var e=$("setupErr"); e.textContent=msg; e.classList.add("show"); }
+  function showTileKeyErr(msg){ var e=$("tileKeyErr"); e.textContent=msg; e.classList.add("show"); }
 
-  function testToken(v){
+  function testToken(v, tileVal){
     $("tokenSave").textContent = "Checking…";
     fetch("https://api.airtable.com/v0/"+BASE_ID+"/"+CLINICS_TABLE+"?maxRecords=1", {headers:{Authorization:"Bearer "+v}})
       .then(function(r){
@@ -372,20 +410,17 @@ body{font-family:var(--body);color:var(--ink);}
       })
       .then(function(){
         localStorage.setItem(tokenKey, v); token = v;
+        localStorage.setItem(tileKeyName, tileVal); tileKey = tileVal;
         $("setup").classList.add("hidden");
         boot();
       })
-      .catch(function(err){ $("tokenSave").textContent="Connect to Airtable"; showSetupErr(err.message); });
+      .catch(function(err){ $("tokenSave").textContent="Connect"; showSetupErr(err.message); });
   }
 
   // ---- Boot ----
   function boot(){
     map = L.map("map", { zoomControl:false, attributionControl:true }).setView([28.63,-81.38], 11);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom:19,
-      subdomains:"abc",
-      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    makeTileLayer().addTo(map);
     L.control.zoom({position:"bottomright"}).addTo(map);
 
     cluster = L.markerClusterGroup({
@@ -404,6 +439,9 @@ body{font-family:var(--body);color:var(--ink);}
     $("infoClose").onclick = function(){ $("infoModal").classList.remove("show"); };
     $("resetKey").onclick = function(){
       localStorage.removeItem(tokenKey); token = null;
+      localStorage.removeItem(tileKeyName); tileKey = null;
+      $("airtableSetupBlock").hidden = false;
+      $("setupAlreadyConnected").hidden = true;
       $("infoModal").classList.remove("show");
       $("setupReauth").classList.remove("show");
       $("setup").classList.remove("hidden");
@@ -633,10 +671,7 @@ body{font-family:var(--body);color:var(--ink);}
   function initRouteMap(){
     if (!routeMap){
       routeMap = L.map("routePickMap", { zoomControl:false }).setView([28.63,-81.38], 11);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom:19, subdomains:"abc",
-        attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      }).addTo(routeMap);
+      makeTileLayer().addTo(routeMap);
       L.control.zoom({position:"bottomright"}).addTo(routeMap);
       routeMarkersLayer = L.layerGroup().addTo(routeMap);
     }
