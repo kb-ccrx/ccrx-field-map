@@ -360,7 +360,9 @@ body{font-family:var(--body);color:var(--ink);}
   var tileKey = localStorage.getItem(tileKeyName);
 
   var map, cluster, meMarker, meCircle, watchId=null;
-  var activeStages = new Set(STAGES.map(function(s){return s.name;}));
+  // Stages that are hidden by default when the app first launches — still toggleable via their chips.
+  var DEFAULT_OFF_STAGES = {"Parked":true, "Not Pursuing":true, "Closed Lost":true};
+  var activeStages = new Set(STAGES.filter(function(s){ return !DEFAULT_OFF_STAGES[s.name]; }).map(function(s){return s.name;}));
   var allRecords = [];
   var markersByStage = {};
   var hasFitOnce = false;
