@@ -192,7 +192,8 @@ body{font-family:var(--body);color:var(--ink);}
 .task-group-title{font-family:var(--body);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line);}
 .task-group-title .cnt{font-weight:600;color:var(--ink-dim);opacity:.7;}
 .task-item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px;}
-.task-item.checked{background:var(--surface-2);opacity:.65;}
+.task-item.checked{background:var(--surface-2);}
+.task-item.checked .task-item-main{opacity:.6;}
 .task-item-top{display:flex;align-items:flex-start;gap:10px;}
 .task-item-top input{width:19px;height:19px;flex:0 0 auto;margin-top:1px;}
 .task-item-text{flex:1;font-size:14px;color:var(--ink);line-height:1.4;font-weight:500;}
@@ -205,8 +206,12 @@ body{font-family:var(--body);color:var(--ink);}
 .task-item-context.expanded{max-height:none;}
 .task-followup{display:none;gap:8px;flex-wrap:wrap;margin-top:10px;margin-left:29px;}
 .task-item.checked .task-followup{display:flex;}
-.task-followup-text{flex:1 1 160px;font-family:var(--body);font-size:12.5px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);}
-.task-followup-date{flex:0 0 auto;font-family:var(--body);font-size:12.5px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);}
+.task-followup-text{flex:1 1 160px;font-family:var(--body);font-size:12.5px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#ffffff;color:#1b2338;opacity:1;}
+.task-followup-date{flex:0 0 auto;font-family:var(--body);font-size:12.5px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:#ffffff;color:#1b2338;opacity:1;}
+/* Phones: don't rely on the checkbox toggle repainting reliably — just always show the capture fields. */
+@media (max-width:640px){
+  .task-followup{display:flex;}
+}
 .task-see-more{display:block;width:100%;text-align:center;font-family:var(--body);font-weight:600;font-size:12.5px;padding:9px;border-radius:10px;border:1px dashed var(--line);background:transparent;color:var(--navy);cursor:pointer;margin-top:2px;}
 #tasksFooter{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 12px);}
 #tasksFooterMsg{font-size:12.5px;font-weight:600;color:var(--ink-dim);}
@@ -1128,12 +1133,14 @@ body{font-family:var(--body);color:var(--ink);}
     var contextText = (c && (c.notes||"").trim()) || "";
 
     row.innerHTML =
-      '<div class="task-item-top">'+
-        '<input type="checkbox" '+(isChecked?"checked":"")+'>'+
-        '<div class="task-item-text">'+esc(item.text)+'</div>'+
-      '</div>'+
-      '<div class="task-item-meta">'+meta+'</div>'+
-      (contextText ? '<div class="task-item-context">'+esc(contextText)+'</div>' : "");
+      '<div class="task-item-main">'+
+        '<div class="task-item-top">'+
+          '<input type="checkbox" '+(isChecked?"checked":"")+'>'+
+          '<div class="task-item-text">'+esc(item.text)+'</div>'+
+        '</div>'+
+        '<div class="task-item-meta">'+meta+'</div>'+
+        (contextText ? '<div class="task-item-context">'+esc(contextText)+'</div>' : "") +
+      '</div>';
 
     // Optional "what's next" capture, revealed once this box is checked — not required,
     // just a chance to line up the follow-up before this item disappears off the list.
