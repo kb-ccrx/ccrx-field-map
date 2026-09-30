@@ -442,7 +442,8 @@ body{font-family:var(--body);color:var(--ink);}
   var followUpDrafts = {}; // keyed by item key -> {text, date}, the optional "what's next" typed in when checking a box
   var dataLoadedOnce = false; // false until the first successful loadData(), so we never say "nothing open" before we've actually loaded anything
   var tasksLoadFailed = false; // true when the Tasks table specifically failed to load on the last attempt
-  var loadSeq = 0; // bumped each loadData() call so a stale resumed/overlapping fetch can't overwrite a fresher one
+  var loadInFlight = false; // true while a loadData() call is in progress, so overlapping triggers queue instead of racing
+  var pendingReload = false; // set when loadData() was called again while one was already running
 
   function $(id){ return document.getElementById(id); }
 
@@ -620,11 +621,32 @@ body{font-family:var(--body);color:var(--ink);}
   }
 
   function loadData(isRefresh){
+    // Never let two loads run at once (e.g. the refresh icon, the 5-minute timer, and the
+    // app-resumed listener all firing close together) — that was leaving the badge stuck on
+    // "Loading…" forever, because each call's result was getting stepped on by the next before
+    // it could finish. Instead, queue at most one follow-up reload and run it after this one ends.
+    if (loadInFlight){ pendingReload = true; return; }
+    loadInFlight = true;
+
     $("countBadge").textContent = isRefresh ? "Refreshing…" : "Loading…";
     tasksLoadFailed = false;
-    var mySeq = ++loadSeq; // if a resumed/overlapping call finishes after a newer one, ignore its stale result
+
+    // Paint the map from Clinics alone as soon as it's back, instead of waiting on Contacts and
+    // Tasks too — those only add contact names and the checklist, nothing the map needs to show pins.
+    var clinicsPromise = fetchAll(CLINICS_TABLE, Object.values(F));
+    clinicsPromise.then(function(clinics){
+      var clinicsMapped = clinics.map(function(rec){ return clinicRecToObj(rec, {}); });
+      var quickById = {};
+      clinicsMapped.forEach(function(c){ quickById[c.id] = c; });
+      allClinicsById = quickById;
+      allRecords = clinicsMapped.filter(function(c){ return typeof c.lat==="number" && typeof c.lng==="number"; });
+      renderMarkers();
+      $("countBadge").textContent = allRecords.length + " location" + (allRecords.length===1?"":"s");
+      if (!hasFitOnce && allRecords.length){ hasFitOnce = true; fitAll(); }
+    }).catch(function(){ /* the combined handler below reports the real error */ });
+
     Promise.all([
-      fetchAll(CLINICS_TABLE, Object.values(F)),
+      clinicsPromise,
       fetchAll(CONTACTS_TABLE, [CF.name, CF.clinic]),
       // A hiccup on the Tasks table alone shouldn't blank the whole map — isolate it and note
       // the failure so the checklist can say so, instead of wrongly claiming "nothing's open."
@@ -635,7 +657,6 @@ body{font-family:var(--body);color:var(--ink);}
         return [];
       })
     ]).then(function(res){
-      if (mySeq !== loadSeq) return; // a newer load already started (e.g. app resumed) — drop this stale result
       var clinics = res[0], contacts = res[1], tasks = res[2];
       var contactsByClinicId = {};
       contacts.forEach(function(rec){
@@ -667,13 +688,12 @@ body{font-family:var(--body);color:var(--ink);}
         };
       }).filter(function(t){ return !t.done; });
 
-      renderMarkers();
+      renderMarkers(); // redraw now that contact names are attached too (cheap — just pins, not a refetch)
       $("countBadge").textContent = allRecords.length + " location" + (allRecords.length===1?"":"s");
       if (!hasFitOnce && allRecords.length){ hasFitOnce = true; fitAll(); }
       dataLoadedOnce = true;
       if ($("tasksScreen").classList.contains("show")) renderTasksScreen();
     }).catch(function(err){
-      if (mySeq !== loadSeq) return; // superseded by a newer load — its own handler already ran
       if (err && err.authError){
         localStorage.removeItem(tokenKey); token = null;
         $("setupReauth").classList.add("show");
@@ -684,6 +704,9 @@ body{font-family:var(--body);color:var(--ink);}
       console.error(err);
       tasksLoadFailed = true;
       if ($("tasksScreen").classList.contains("show")) renderTasksScreen();
+    }).then(function(){
+      loadInFlight = false;
+      if (pendingReload){ pendingReload = false; loadData(true); }
     });
   }
 
