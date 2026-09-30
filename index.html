@@ -176,6 +176,38 @@ body{font-family:var(--body);color:var(--ink);}
 .route-stop-done,.route-stop-remove{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:none;background:var(--surface-2);color:var(--ink-dim);font-size:14px;cursor:pointer;}
 .route-leg-btn{display:block;text-align:center;font-family:var(--body);font-weight:600;font-size:13.5px;padding:12px;border-radius:10px;background:var(--navy);color:#fff;text-decoration:none;margin-top:10px;}
 .route-legs-note{font-size:11.5px;color:var(--ink-dim);margin-top:8px;line-height:1.5;}
+
+/* ---- Follow-up checklist screen ---- */
+#tasksScreen{position:fixed;inset:0;z-index:2200;background:var(--bg);display:none;flex-direction:column;}
+#tasksScreen.show{display:flex;}
+#tasksHeader{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 10px;background:var(--navy);color:#fff;flex:0 0 auto;}
+#tasksHeader h1{font-family:var(--display);font-size:18px;}
+#tasksClose{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:18px;cursor:pointer;}
+#tasksOwnerBar{display:flex;gap:8px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line);flex:0 0 auto;}
+.owner-chip{font-family:var(--body);font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:999px;border:1px solid var(--navy);background:var(--navy);color:#fff;cursor:pointer;}
+.owner-chip.off{background:transparent;color:var(--ink-dim);border-color:var(--line);}
+#tasksBody{flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 16px;}
+#tasksEmpty{text-align:center;color:var(--ink-dim);font-size:14px;margin-top:40px;}
+.task-group{margin-bottom:20px;}
+.task-group-title{font-family:var(--body);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line);}
+.task-group-title .cnt{font-weight:600;color:var(--ink-dim);opacity:.7;}
+.task-item{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:9px;}
+.task-item.checked{background:var(--surface-2);opacity:.65;}
+.task-item-top{display:flex;align-items:flex-start;gap:10px;}
+.task-item-top input{width:19px;height:19px;flex:0 0 auto;margin-top:1px;}
+.task-item-text{flex:1;font-size:14px;color:var(--ink);line-height:1.4;font-weight:500;}
+.task-item.checked .task-item-text{text-decoration:line-through;}
+.task-item-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:7px;padding-left:29px;}
+.task-clinic-name{font-size:12px;font-weight:700;color:var(--navy);margin-right:2px;}
+.task-due{font-size:11px;font-weight:600;color:var(--ink-dim);margin-left:auto;}
+.task-due.overdue{color:#b0413e;}
+.task-item-context{margin-top:8px;margin-left:29px;font-size:12.5px;color:var(--ink-dim);line-height:1.5;max-height:38px;overflow:hidden;cursor:pointer;}
+.task-item-context.expanded{max-height:none;}
+.task-see-more{display:block;width:100%;text-align:center;font-family:var(--body);font-weight:600;font-size:12.5px;padding:9px;border-radius:10px;border:1px dashed var(--line);background:transparent;color:var(--navy);cursor:pointer;margin-top:2px;}
+#tasksFooter{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 12px);}
+#tasksFooterMsg{font-size:12.5px;font-weight:600;color:var(--ink-dim);}
+#tasksUpdateBtn{font-family:var(--body);font-weight:600;font-size:13.5px;padding:11px 18px;border-radius:10px;border:none;background:var(--navy);color:#fff;cursor:pointer;}
+#tasksUpdateBtn:disabled{background:var(--surface-2);color:var(--ink-dim);cursor:default;}
 </style>
 </head>
 <body>
@@ -187,7 +219,7 @@ body{font-family:var(--body);color:var(--ink);}
       <p>Reads your Clinics live from Airtable. It needs your own Airtable API key to do that, stored only in this browser, never sent anywhere but Airtable.</p>
       <ol>
         <li>Go to <strong>airtable.com/create/tokens</strong> (on your phone or computer).</li>
-        <li>Create a token named "Field Map", scope <strong>data.records:read</strong>, access to base <strong>CCRX</strong> only.</li>
+        <li>Create a token named "Field Map", scopes <strong>data.records:read</strong> and <strong>data.records:write</strong> (write is needed for the follow-up checklist), access to base <strong>CCRX</strong> only.</li>
         <li>Copy the token (starts with <code>pat...</code>) and paste it below.</li>
       </ol>
       <div class="setup-err" id="setupErr"></div>
@@ -227,6 +259,7 @@ body{font-family:var(--body);color:var(--ink);}
   <button class="fab" id="fitAllBtn" title="Zoom to fit all pins">&#8981;</button>
   <button class="fab" id="locateBtn" title="Show my location">&#9678;</button>
   <button class="fab" id="routeBtn" title="Plan a route">&#129517;</button>
+  <button class="fab" id="tasksBtn" title="Follow-up checklist">&#9745;</button>
 </div>
 
 <div id="sheetBackdrop"></div>
@@ -246,6 +279,7 @@ body{font-family:var(--body);color:var(--ink);}
     </ol>
     <p>Pins are colored by Stage. Tap a chip to hide/show that stage. Tap a pin for details, directions, and a call button. The refresh icon pulls the latest from Airtable; it also auto-refreshes every 5 minutes while open.</p>
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
+    <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -285,6 +319,22 @@ body{font-family:var(--body);color:var(--ink);}
   </div>
 </div>
 
+<div id="tasksScreen">
+  <div id="tasksHeader">
+    <h1>Follow-Ups</h1>
+    <button id="tasksClose" title="Close" aria-label="Close">&times;</button>
+  </div>
+  <div id="tasksOwnerBar"></div>
+  <div id="tasksBody">
+    <div id="tasksEmpty" hidden>Nothing open. Nice work.</div>
+    <div id="tasksGroups"></div>
+  </div>
+  <div id="tasksFooter">
+    <span id="tasksFooterMsg">0 selected</span>
+    <button id="tasksUpdateBtn" disabled>Update Airtable</button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <script>
@@ -294,15 +344,21 @@ body{font-family:var(--body);color:var(--ink);}
   var BASE_ID = "app4dmAeEBRuSqeno";
   var CLINICS_TABLE = "tblYLNMfQ4MRhFjE3";
   var CONTACTS_TABLE = "tblLBhpzl7qtGKCyd";
+  var TASKS_TABLE = "tblgG9aVhSytcCHMp";
 
   var F = { // Clinics field IDs
     name:"fldav47bI4XT5dkb3", stage:"fldNvkkh5aUeIpmZT", fit:"fldKZUvH2TdM7Ld2o",
     address:"fldWFIcsf0IHReFtx", lat:"flduCAwh8GOme6Pgg", lng:"fldagkN1z79b4wQn4",
     phone:"fldAx8T2wEb6NwmWv", website:"fldyexgBLmumzPu1S", notes:"fldZWk1z8NKDy16Tr",
     nextAction:"fldgNCT1yZp5NWxHB", lastContact:"fld7uhRSvyAOwRa3H", contacts:"fldw47jnu1OR7ZL45",
-    qualified:"fld0SiKvkO12UfoEg", interest:"flde1WCOTSjvRAi6V", owner:"fldz8AKEDGn1TuKtW"
+    qualified:"fld0SiKvkO12UfoEg", interest:"flde1WCOTSjvRAi6V", owner:"fldz8AKEDGn1TuKtW",
+    activityLog:"fld2iM255ldam2YmP"
   };
   var CF = { name:"fld5SWDkRHf3epyYD", clinic:"fldInKK6h0cRnOAC7" }; // Contacts field IDs
+  var TF = { // Tasks field IDs
+    text:"fldgsqV55AKR63bTX", clinic:"fldOIalo6eTDN6XU3", owner:"fldtEhw2i8gAKMf3L",
+    due:"fldDi4t0txypYvPlQ", done:"fldUNQaO6q4Ke4Tt5"
+  };
 
   var STAGES = [
     {name:"Target", color:"#e8a33d", shape:"outline"},
@@ -366,6 +422,13 @@ body{font-family:var(--body);color:var(--ink);}
   var allRecords = [];
   var markersByStage = {};
   var hasFitOnce = false;
+
+  // ---- Follow-up checklist state ----
+  // allClinicsById holds every Clinic record (unlike allRecords, which drops any without lat/lng),
+  // since the checklist needs to reference clinics that might not be mappable yet.
+  var allClinicsById = {};
+  var allTasks = [];          // open (not-Done) Tasks table records, joined to their clinic
+  var checkedItems = new Set(); // keys like "task:recXXX" or "next:recXXX", local until "Update Airtable" is pressed
 
   function $(id){ return document.getElementById(id); }
 
@@ -453,6 +516,7 @@ body{font-family:var(--body);color:var(--ink);}
     $("locateBtn").onclick = toggleLocate;
     $("fitAllBtn").onclick = fitAll;
     wireRoute();
+    wireTasks();
 
     loadData(false);
     setInterval(function(){ loadData(true); }, 5*60*1000);
@@ -510,13 +574,31 @@ body{font-family:var(--body);color:var(--ink);}
     return page();
   }
 
+  function clinicRecToObj(rec, contactsByClinicId){
+    var f=rec.fields;
+    return {
+      id:rec.id, name:f[F.name]||"(unnamed)",
+      stage: (f[F.stage] && f[F.stage].name) || (typeof f[F.stage]==="string" ? f[F.stage] : null),
+      fit: (f[F.fit] && f[F.fit].name) || (typeof f[F.fit]==="string" ? f[F.fit] : null),
+      qualified: (f[F.qualified] && f[F.qualified].name) || (typeof f[F.qualified]==="string" ? f[F.qualified] : null),
+      interest: (f[F.interest] && f[F.interest].name) || (typeof f[F.interest]==="string" ? f[F.interest] : null),
+      owner: singleSelectListToNames(f[F.owner]),
+      address:f[F.address], lat:f[F.lat], lng:f[F.lng],
+      phone:f[F.phone], website:f[F.website], notes:f[F.notes],
+      nextAction:f[F.nextAction], lastContact:f[F.lastContact],
+      activityLog:f[F.activityLog],
+      contactNames:((contactsByClinicId||{})[rec.id]||[]).join(", ")
+    };
+  }
+
   function loadData(isRefresh){
     $("countBadge").textContent = isRefresh ? "Refreshing…" : "Loading…";
     Promise.all([
       fetchAll(CLINICS_TABLE, Object.values(F)),
-      fetchAll(CONTACTS_TABLE, [CF.name, CF.clinic])
+      fetchAll(CONTACTS_TABLE, [CF.name, CF.clinic]),
+      fetchAll(TASKS_TABLE, Object.values(TF))
     ]).then(function(res){
-      var clinics = res[0], contacts = res[1];
+      var clinics = res[0], contacts = res[1], tasks = res[2];
       var contactsByClinicId = {};
       contacts.forEach(function(rec){
         var f=rec.fields, linked=f[CF.clinic]||[];
@@ -525,24 +607,32 @@ body{font-family:var(--body);color:var(--ink);}
           (contactsByClinicId[cid]=contactsByClinicId[cid]||[]).push(nm);
         });
       });
-      allRecords = clinics.map(function(rec){
+
+      // Unfiltered clinic lookup for the checklist — a clinic missing lat/lng still has open tasks.
+      allClinicsById = {};
+      var clinicsMapped = clinics.map(function(rec){
+        var c = clinicRecToObj(rec, contactsByClinicId);
+        allClinicsById[c.id] = c;
+        return c;
+      });
+      allRecords = clinicsMapped.filter(function(c){ return typeof c.lat==="number" && typeof c.lng==="number"; });
+
+      allTasks = tasks.map(function(rec){
         var f=rec.fields;
+        var clinicIds = f[TF.clinic]||[];
         return {
-          id:rec.id, name:f[F.name]||"(unnamed)",
-          stage: (f[F.stage] && f[F.stage].name) || (typeof f[F.stage]==="string" ? f[F.stage] : null),
-          fit: (f[F.fit] && f[F.fit].name) || (typeof f[F.fit]==="string" ? f[F.fit] : null),
-          qualified: (f[F.qualified] && f[F.qualified].name) || (typeof f[F.qualified]==="string" ? f[F.qualified] : null),
-          interest: (f[F.interest] && f[F.interest].name) || (typeof f[F.interest]==="string" ? f[F.interest] : null),
-          owner: singleSelectListToNames(f[F.owner]),
-          address:f[F.address], lat:f[F.lat], lng:f[F.lng],
-          phone:f[F.phone], website:f[F.website], notes:f[F.notes],
-          nextAction:f[F.nextAction], lastContact:f[F.lastContact],
-          contactNames:(contactsByClinicId[rec.id]||[]).join(", ")
+          id:rec.id, text:f[TF.text]||"(no task text)",
+          clinicId: Array.isArray(clinicIds) ? clinicIds[0] : null,
+          owner: singleSelectListToNames(f[TF.owner]),
+          due: f[TF.due]||null,
+          done: !!f[TF.done]
         };
-      }).filter(function(c){ return typeof c.lat==="number" && typeof c.lng==="number"; });
+      }).filter(function(t){ return !t.done; });
+
       renderMarkers();
       $("countBadge").textContent = allRecords.length + " location" + (allRecords.length===1?"":"s");
       if (!hasFitOnce && allRecords.length){ hasFitOnce = true; fitAll(); }
+      if ($("tasksScreen").classList.contains("show")) renderTasksScreen();
     }).catch(function(err){
       if (err && err.authError){
         localStorage.removeItem(tokenKey); token = null;
@@ -897,6 +987,262 @@ body{font-family:var(--body);color:var(--ink);}
       $("rebuildBtn").textContent = "Rebuild from here";
       alert("Couldn't get your location: " + err.message);
     }, {enableHighAccuracy:true});
+  }
+
+  // ---- Follow-up checklist ----
+  function todayISO(){
+    var d = new Date(), m=String(d.getMonth()+1), day=String(d.getDate());
+    if (m.length<2) m="0"+m;
+    if (day.length<2) day="0"+day;
+    return d.getFullYear()+"-"+m+"-"+day;
+  }
+  function fmtDateShort(iso){
+    if (!iso) return "";
+    var p = iso.split("-");
+    return parseInt(p[1],10)+"/"+parseInt(p[2],10);
+  }
+  function addDaysISO(iso, days){
+    var d = new Date(iso+"T00:00:00");
+    d.setDate(d.getDate()+days);
+    var m=String(d.getMonth()+1), day=String(d.getDate());
+    if (m.length<2) m="0"+m;
+    if (day.length<2) day="0"+day;
+    return d.getFullYear()+"-"+m+"-"+day;
+  }
+  function stagePill(stageName){
+    if (!stageName) return "";
+    var s = stageColor[stageName] || {color:"#8a8a8a"};
+    return '<span class="pill" style="background:'+s.color+';color:#fff;">'+esc(stageName)+'</span>';
+  }
+
+  // ---- Owner filter (Kelley / Jennette / Casey), remembered per device ----
+  var ownerFilterKey = "ccrx_map_task_owners";
+  var ALL_OWNERS = ["Kelley","Jennette","Casey"];
+  var selectedOwners = (function(){
+    try {
+      var saved = JSON.parse(localStorage.getItem(ownerFilterKey));
+      if (Array.isArray(saved) && saved.length) return new Set(saved);
+    } catch(e){}
+    return new Set(ALL_OWNERS);
+  })();
+  function ownerAllowed(owners){
+    if (!owners || !owners.length) return true; // unassigned items always show, rather than vanish silently
+    return owners.some(function(o){ return selectedOwners.has(o); });
+  }
+  function buildOwnerChips(){
+    var wrap = $("tasksOwnerBar"); wrap.innerHTML = "";
+    ALL_OWNERS.forEach(function(name){
+      var b = document.createElement("button");
+      b.className = "owner-chip" + (selectedOwners.has(name) ? "" : " off");
+      b.textContent = name;
+      b.onclick = function(){
+        if (selectedOwners.has(name)){
+          if (selectedOwners.size===1) return; // keep at least one owner selected
+          selectedOwners.delete(name);
+        } else {
+          selectedOwners.add(name);
+        }
+        localStorage.setItem(ownerFilterKey, JSON.stringify(Array.from(selectedOwners)));
+        b.classList.toggle("off", !selectedOwners.has(name));
+        renderTasksScreen();
+      };
+      wrap.appendChild(b);
+    });
+  }
+
+  function computeTaskGroups(){
+    var today = todayISO(), weekOut = addDaysISO(today, 7);
+    var soonTasks=[], laterTasks=[], nextActions=[];
+
+    // Field Follow-Ups: everything explicitly logged as a Task (calls, emails, etc.) — the
+    // things you decided needed doing after a visit — regardless of whether a due date was set.
+    allTasks.forEach(function(t){
+      var owners = t.owner||[];
+      if (!ownerAllowed(owners)) return;
+      var item = { key:"task:"+t.id, kind:"task", text:t.text, due:t.due, owners:owners, clinic: t.clinicId ? allClinicsById[t.clinicId] : null };
+      if (!t.due || t.due<=weekOut) soonTasks.push(item);
+      else laterTasks.push(item);
+    });
+
+    // Clinic Next Actions: the softer, clinic-level notes-to-self that never became a formal Task.
+    Object.keys(allClinicsById).forEach(function(cid){
+      var c = allClinicsById[cid];
+      if (!c.nextAction || !c.nextAction.trim()) return;
+      var owners = c.owner||[];
+      if (!ownerAllowed(owners)) return;
+      nextActions.push({ key:"next:"+cid, kind:"next", text:c.nextAction, due:null, owners:owners, clinic:c });
+    });
+
+    function byDueThenName(a,b){
+      if (a.due && b.due) return a.due<b.due?-1:a.due>b.due?1:0;
+      if (a.due) return -1;
+      if (b.due) return 1;
+      var an=(a.clinic&&a.clinic.name)||"", bn=(b.clinic&&b.clinic.name)||"";
+      return an.localeCompare(bn);
+    }
+    [soonTasks, laterTasks, nextActions].forEach(function(arr){ arr.sort(byDueThenName); });
+
+    var groups = [];
+    if (soonTasks.length || laterTasks.length) groups.push({title:"Field Follow-Ups", items:soonTasks, moreItems:laterTasks, moreLabel:"due more than a week out"});
+    if (nextActions.length) groups.push({title:"Clinic Next Actions", items:nextActions});
+    return groups;
+  }
+
+  function buildTaskItemEl(item){
+    var row = document.createElement("div");
+    var isChecked = checkedItems.has(item.key);
+    row.className = "task-item" + (isChecked ? " checked" : "");
+
+    var c = item.clinic;
+    var meta = "";
+    if (c) meta += '<span class="task-clinic-name">'+esc(c.name)+'</span>';
+    if (c && c.stage) meta += stagePill(c.stage);
+    if (c && c.interest) meta += pill(c.interest, INTEREST_COLORS);
+    if (c && c.qualified) meta += pill(c.qualified, QUALIFIED_COLORS);
+    if (item.due){
+      var overdue = item.due <= todayISO();
+      meta += '<span class="task-due'+(overdue?" overdue":"")+'">Due '+esc(fmtDateShort(item.due))+'</span>';
+    }
+    var contextText = (c && (c.notes||"").trim()) || "";
+
+    row.innerHTML =
+      '<div class="task-item-top">'+
+        '<input type="checkbox" '+(isChecked?"checked":"")+'>'+
+        '<div class="task-item-text">'+esc(item.text)+'</div>'+
+      '</div>'+
+      '<div class="task-item-meta">'+meta+'</div>'+
+      (contextText ? '<div class="task-item-context">'+esc(contextText)+'</div>' : "");
+
+    row.querySelector("input").onchange = function(e){
+      if (e.target.checked) checkedItems.add(item.key); else checkedItems.delete(item.key);
+      row.classList.toggle("checked", e.target.checked);
+      updateTasksFooter();
+    };
+    var ctxEl = row.querySelector(".task-item-context");
+    if (ctxEl) ctxEl.onclick = function(){ ctxEl.classList.toggle("expanded"); };
+    return row;
+  }
+
+  function renderTasksScreen(){
+    var groups = computeTaskGroups();
+    var wrap = $("tasksGroups"); wrap.innerHTML = "";
+    var total = 0;
+    groups.forEach(function(g){
+      var moreItems = g.moreItems || [];
+      var groupCount = g.items.length + moreItems.length;
+      total += groupCount;
+      var gEl = document.createElement("div");
+      gEl.className = "task-group";
+      var title = document.createElement("div");
+      title.className = "task-group-title";
+      title.innerHTML = esc(g.title) + ' <span class="cnt">('+groupCount+')</span>';
+      gEl.appendChild(title);
+      g.items.forEach(function(item){ gEl.appendChild(buildTaskItemEl(item)); });
+
+      if (moreItems.length){
+        var moreWrap = document.createElement("div");
+        moreWrap.hidden = true;
+        moreItems.forEach(function(item){ moreWrap.appendChild(buildTaskItemEl(item)); });
+        var labelShow = "See "+moreItems.length+" more "+(g.moreLabel||"")+"…";
+        var toggle = document.createElement("button");
+        toggle.className = "task-see-more";
+        toggle.type = "button";
+        toggle.textContent = labelShow;
+        toggle.onclick = function(){
+          moreWrap.hidden = !moreWrap.hidden;
+          toggle.textContent = moreWrap.hidden ? labelShow : "Show fewer";
+        };
+        gEl.appendChild(toggle);
+        gEl.appendChild(moreWrap);
+      }
+      wrap.appendChild(gEl);
+    });
+    $("tasksEmpty").hidden = total>0;
+    updateTasksFooter();
+  }
+
+  function updateTasksFooter(){
+    var n = checkedItems.size;
+    $("tasksFooterMsg").textContent = n + " selected";
+    $("tasksUpdateBtn").disabled = n===0;
+  }
+
+  function openTasksScreen(){ $("tasksScreen").classList.add("show"); renderTasksScreen(); }
+  function closeTasksScreen(){ $("tasksScreen").classList.remove("show"); }
+
+  // Generic Airtable batch PATCH — 10 records per request, chained so batches don't race.
+  function airtablePatch(tableId, records){
+    var batches = [];
+    for (var i=0;i<records.length;i+=10) batches.push(records.slice(i,i+10));
+    return batches.reduce(function(chain, batch){
+      return chain.then(function(){
+        return fetch("https://api.airtable.com/v0/"+BASE_ID+"/"+tableId, {
+          method:"PATCH",
+          headers:{Authorization:"Bearer "+token, "Content-Type":"application/json"},
+          body: JSON.stringify({records:batch})
+        }).then(function(r){
+          if (!r.ok){
+            return r.json().catch(function(){ return null; }).then(function(body){
+              var msg = (body && body.error && body.error.message) || ("Airtable error "+r.status);
+              var e = new Error(msg);
+              if (r.status===401||r.status===403) e.authError = true;
+              throw e;
+            });
+          }
+          return r.json();
+        });
+      });
+    }, Promise.resolve());
+  }
+
+  function commitCheckedTasks(){
+    if (!checkedItems.size) return;
+    var btn = $("tasksUpdateBtn");
+    btn.disabled = true; btn.textContent = "Updating…";
+    $("tasksFooterMsg").textContent = "Saving to Airtable…";
+
+    var taskRecords = [], clinicRecords = [];
+    var todayNice = new Date().toLocaleDateString("en-US", {month:"numeric", day:"numeric", year:"numeric"});
+
+    checkedItems.forEach(function(key){
+      var idx = key.indexOf(":"), kind = key.slice(0,idx), id = key.slice(idx+1);
+      if (kind==="task"){
+        var tf = {}; tf[TF.done] = true;
+        taskRecords.push({ id:id, fields:tf });
+      } else if (kind==="next"){
+        var c = allClinicsById[id];
+        var oldNA = (c && c.nextAction) || "";
+        var oldLog = (c && c.activityLog) || "";
+        var newLog = todayNice + " — Completed via checklist: " + oldNA + (oldLog ? "\n"+oldLog : "");
+        var cf = {}; cf[F.nextAction] = ""; cf[F.activityLog] = newLog;
+        clinicRecords.push({ id:id, fields:cf });
+      }
+    });
+
+    var work = Promise.resolve();
+    if (taskRecords.length) work = work.then(function(){ return airtablePatch(TASKS_TABLE, taskRecords); });
+    if (clinicRecords.length) work = work.then(function(){ return airtablePatch(CLINICS_TABLE, clinicRecords); });
+
+    work.then(function(){
+      checkedItems.clear();
+      btn.textContent = "Update Airtable";
+      loadData(true);
+    }).catch(function(err){
+      btn.disabled = false; btn.textContent = "Update Airtable";
+      if (err && err.authError){
+        $("tasksFooterMsg").textContent = "Your Airtable key can't write — it needs data.records:write scope.";
+      } else {
+        $("tasksFooterMsg").textContent = "Update failed: " + (err.message || "try again");
+      }
+      console.error(err);
+    });
+  }
+
+  function wireTasks(){
+    $("tasksBtn").onclick = openTasksScreen;
+    $("tasksClose").onclick = closeTasksScreen;
+    $("tasksUpdateBtn").onclick = commitCheckedTasks;
+    buildOwnerChips();
   }
 
   function wireRoute(){
