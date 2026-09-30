@@ -561,8 +561,11 @@ body{font-family:var(--body);color:var(--ink);}
     markersByStage = {};
     allRecords.forEach(function(c){
       if (!c.stage) c.stage = "Unknown";
+      // Only auto-show a stage name we don't recognize at all (e.g. a new Airtable option).
+      // A known stage (including the ones defaulted off) keeps whatever activeStages already says.
+      var knownStage = STAGES.some(function(s){ return s.name === c.stage; });
       if (!stageColor[c.stage]) stageColor[c.stage] = {color:"#8a8a8a", shape:"circle"};
-      if (!activeStages.has(c.stage)) activeStages.add(c.stage);
+      if (!knownStage && !activeStages.has(c.stage)) activeStages.add(c.stage);
       var s = stageColor[c.stage];
       var icon = L.divIcon({
         className:"pin",
