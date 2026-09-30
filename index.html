@@ -374,6 +374,7 @@ body{font-family:var(--body);color:var(--ink);}
     {name:"Attempted Contact", color:"#c9ab52", shape:"half"},
     {name:"Contacted", color:"#4fb0c6", shape:"circle"},
     {name:"Meeting Scheduled", color:"#2e9e8f", shape:"square"},
+    {name:"Met/Evaluating", color:"#8657c9", shape:"square"},
     {name:"Closing", color:"#4c9a5b", shape:"diamond"},
     {name:"Signed", color:"#c9a227", shape:"star"},
     {name:"Parked", color:"#b0413e", shape:"pause"},
@@ -402,7 +403,7 @@ body{font-family:var(--body);color:var(--ink);}
         return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#fff" stroke="'+c+'" stroke-width="2.2"/><path d="M12 3 A9 9 0 0 1 12 21 Z" fill="'+c+'"/></svg>';
       case "circle": // Contacted — in conversation
         return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="'+c+'" stroke="#fff" stroke-width="2.5"/></svg>';
-      case "square": // Meeting Scheduled — on the calendar
+      case "square": // Meeting Scheduled / Met-Evaluating — same shape, told apart by color
         return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5" fill="'+c+'" stroke="#fff" stroke-width="2.2"/></svg>';
       case "diamond": // Closing — deal in motion
         return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><polygon points="12,2 22,12 12,22 2,12" fill="'+c+'" stroke="#fff" stroke-width="2"/></svg>';
