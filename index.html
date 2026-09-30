@@ -424,7 +424,7 @@ body{font-family:var(--body);color:var(--ink);}
     L.control.zoom({position:"bottomright"}).addTo(map);
 
     cluster = L.markerClusterGroup({
-      maxClusterRadius:26,
+      maxClusterRadius:14,
       iconCreateFunction:function(c){
         var n=c.getChildCount();
         var size = n<10?34:n<25?42:50;
