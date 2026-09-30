@@ -429,6 +429,8 @@ body{font-family:var(--body);color:var(--ink);}
   var allClinicsById = {};
   var allTasks = [];          // open (not-Done) Tasks table records, joined to their clinic
   var checkedItems = new Set(); // keys like "task:recXXX" or "next:recXXX", local until "Update Airtable" is pressed
+  var dataLoadedOnce = false; // false until the first successful loadData(), so we never say "nothing open" before we've actually loaded anything
+  var tasksLoadFailed = false; // true when the Tasks table specifically failed to load on the last attempt
 
   function $(id){ return document.getElementById(id); }
 
@@ -593,10 +595,18 @@ body{font-family:var(--body);color:var(--ink);}
 
   function loadData(isRefresh){
     $("countBadge").textContent = isRefresh ? "Refreshing…" : "Loading…";
+    tasksLoadFailed = false;
     Promise.all([
       fetchAll(CLINICS_TABLE, Object.values(F)),
       fetchAll(CONTACTS_TABLE, [CF.name, CF.clinic]),
-      fetchAll(TASKS_TABLE, Object.values(TF))
+      // A hiccup on the Tasks table alone shouldn't blank the whole map — isolate it and note
+      // the failure so the checklist can say so, instead of wrongly claiming "nothing's open."
+      fetchAll(TASKS_TABLE, Object.values(TF)).catch(function(err){
+        console.error("Tasks table load failed:", err);
+        tasksLoadFailed = true;
+        if (err && err.authError) throw err;
+        return [];
+      })
     ]).then(function(res){
       var clinics = res[0], contacts = res[1], tasks = res[2];
       var contactsByClinicId = {};
@@ -632,6 +642,7 @@ body{font-family:var(--body);color:var(--ink);}
       renderMarkers();
       $("countBadge").textContent = allRecords.length + " location" + (allRecords.length===1?"":"s");
       if (!hasFitOnce && allRecords.length){ hasFitOnce = true; fitAll(); }
+      dataLoadedOnce = true;
       if ($("tasksScreen").classList.contains("show")) renderTasksScreen();
     }).catch(function(err){
       if (err && err.authError){
@@ -1157,7 +1168,15 @@ body{font-family:var(--body);color:var(--ink);}
       }
       wrap.appendChild(gEl);
     });
-    $("tasksEmpty").hidden = total>0;
+    var emptyEl = $("tasksEmpty");
+    if (total>0){
+      emptyEl.hidden = true;
+    } else {
+      emptyEl.hidden = false;
+      if (!dataLoadedOnce) emptyEl.textContent = "Loading…";
+      else if (tasksLoadFailed) emptyEl.textContent = "Couldn't load your Tasks from Airtable. Clinic Next Actions above (if any) still loaded fine — try the refresh icon on the map, or check your key's access.";
+      else emptyEl.textContent = "Nothing open. Nice work.";
+    }
     updateTasksFooter();
   }
 
