@@ -203,6 +203,10 @@ body{font-family:var(--body);color:var(--ink);}
 .task-due.overdue{color:#b0413e;}
 .task-item-context{margin-top:8px;margin-left:29px;font-size:12.5px;color:var(--ink-dim);line-height:1.5;max-height:38px;overflow:hidden;cursor:pointer;}
 .task-item-context.expanded{max-height:none;}
+.task-followup{display:none;gap:8px;flex-wrap:wrap;margin-top:10px;margin-left:29px;}
+.task-item.checked .task-followup{display:flex;}
+.task-followup-text{flex:1 1 160px;font-family:var(--body);font-size:12.5px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);}
+.task-followup-date{flex:0 0 auto;font-family:var(--body);font-size:12.5px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);}
 .task-see-more{display:block;width:100%;text-align:center;font-family:var(--body);font-weight:600;font-size:12.5px;padding:9px;border-radius:10px;border:1px dashed var(--line);background:transparent;color:var(--navy);cursor:pointer;margin-top:2px;}
 #tasksFooter{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 12px);}
 #tasksFooterMsg{font-size:12.5px;font-weight:600;color:var(--ink-dim);}
@@ -429,6 +433,7 @@ body{font-family:var(--body);color:var(--ink);}
   var allClinicsById = {};
   var allTasks = [];          // open (not-Done) Tasks table records, joined to their clinic
   var checkedItems = new Set(); // keys like "task:recXXX" or "next:recXXX", local until "Update Airtable" is pressed
+  var followUpDrafts = {}; // keyed by item key -> {text, date}, the optional "what's next" typed in when checking a box
   var dataLoadedOnce = false; // false until the first successful loadData(), so we never say "nothing open" before we've actually loaded anything
   var tasksLoadFailed = false; // true when the Tasks table specifically failed to load on the last attempt
 
@@ -1130,7 +1135,31 @@ body{font-family:var(--body);color:var(--ink);}
       '<div class="task-item-meta">'+meta+'</div>'+
       (contextText ? '<div class="task-item-context">'+esc(contextText)+'</div>' : "");
 
-    row.querySelector("input").onchange = function(e){
+    // Optional "what's next" capture, revealed once this box is checked — not required,
+    // just a chance to line up the follow-up before this item disappears off the list.
+    var draft = followUpDrafts[item.key] || {};
+    var fuWrap = document.createElement("div");
+    fuWrap.className = "task-followup";
+    var fuText = document.createElement("input");
+    fuText.type = "text"; fuText.className = "task-followup-text";
+    fuText.placeholder = "Next action (optional)";
+    fuText.value = draft.text || "";
+    fuText.oninput = function(){
+      if (!followUpDrafts[item.key]) followUpDrafts[item.key] = {};
+      followUpDrafts[item.key].text = fuText.value;
+    };
+    var fuDate = document.createElement("input");
+    fuDate.type = "date"; fuDate.className = "task-followup-date";
+    fuDate.value = draft.date || "";
+    fuDate.onchange = function(){
+      if (!followUpDrafts[item.key]) followUpDrafts[item.key] = {};
+      followUpDrafts[item.key].date = fuDate.value;
+    };
+    fuWrap.appendChild(fuText);
+    fuWrap.appendChild(fuDate);
+    row.appendChild(fuWrap);
+
+    row.querySelector(".task-item-top input[type=checkbox]").onchange = function(e){
       if (e.target.checked) checkedItems.add(item.key); else checkedItems.delete(item.key);
       row.classList.toggle("checked", e.target.checked);
       updateTasksFooter();
@@ -1196,13 +1225,14 @@ body{font-family:var(--body);color:var(--ink);}
   function closeTasksScreen(){ $("tasksScreen").classList.remove("show"); }
 
   // Generic Airtable batch PATCH — 10 records per request, chained so batches don't race.
-  function airtablePatch(tableId, records){
+  // Generic Airtable batch write (PATCH to update, POST to create) — 10 records per request, chained.
+  function airtableWrite(method, tableId, records){
     var batches = [];
     for (var i=0;i<records.length;i+=10) batches.push(records.slice(i,i+10));
     return batches.reduce(function(chain, batch){
       return chain.then(function(){
         return fetch("https://api.airtable.com/v0/"+BASE_ID+"/"+tableId, {
-          method:"PATCH",
+          method:method,
           headers:{Authorization:"Bearer "+token, "Content-Type":"application/json"},
           body: JSON.stringify({records:batch})
         }).then(function(r){
@@ -1226,29 +1256,47 @@ body{font-family:var(--body);color:var(--ink);}
     btn.disabled = true; btn.textContent = "Updating…";
     $("tasksFooterMsg").textContent = "Saving to Airtable…";
 
-    var taskRecords = [], clinicRecords = [];
+    var taskRecords = [], clinicRecords = [], newTaskRecords = [];
     var todayNice = new Date().toLocaleDateString("en-US", {month:"numeric", day:"numeric", year:"numeric"});
 
     checkedItems.forEach(function(key){
       var idx = key.indexOf(":"), kind = key.slice(0,idx), id = key.slice(idx+1);
+      var clinicId = null, owners = [];
+
       if (kind==="task"){
+        var t = allTasks.filter(function(x){ return x.id===id; })[0];
+        if (t){ clinicId = t.clinicId; owners = t.owner || []; }
         var tf = {}; tf[TF.done] = true;
         taskRecords.push({ id:id, fields:tf });
       } else if (kind==="next"){
         var c = allClinicsById[id];
+        clinicId = id; owners = (c && c.owner) || [];
         var oldNA = (c && c.nextAction) || "";
         var oldLog = (c && c.activityLog) || "";
         var newLog = todayNice + " — Completed via checklist: " + oldNA + (oldLog ? "\n"+oldLog : "");
         var cf = {}; cf[F.nextAction] = ""; cf[F.activityLog] = newLog;
         clinicRecords.push({ id:id, fields:cf });
       }
+
+      // The optional "what's next" capture — only creates a new Task if you actually typed something.
+      var draft = followUpDrafts[key];
+      if (draft && (draft.text||"").trim()){
+        var ntf = {};
+        ntf[TF.text] = draft.text.trim();
+        if (clinicId) ntf[TF.clinic] = [clinicId];
+        if (owners.length) ntf[TF.owner] = owners;
+        if (draft.date) ntf[TF.due] = draft.date;
+        newTaskRecords.push({ fields:ntf });
+      }
     });
 
     var work = Promise.resolve();
-    if (taskRecords.length) work = work.then(function(){ return airtablePatch(TASKS_TABLE, taskRecords); });
-    if (clinicRecords.length) work = work.then(function(){ return airtablePatch(CLINICS_TABLE, clinicRecords); });
+    if (taskRecords.length) work = work.then(function(){ return airtableWrite("PATCH", TASKS_TABLE, taskRecords); });
+    if (clinicRecords.length) work = work.then(function(){ return airtableWrite("PATCH", CLINICS_TABLE, clinicRecords); });
+    if (newTaskRecords.length) work = work.then(function(){ return airtableWrite("POST", TASKS_TABLE, newTaskRecords); });
 
     work.then(function(){
+      checkedItems.forEach(function(key){ delete followUpDrafts[key]; });
       checkedItems.clear();
       btn.textContent = "Update Airtable";
       loadData(true);
