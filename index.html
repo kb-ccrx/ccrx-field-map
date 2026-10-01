@@ -461,7 +461,14 @@ body{font-family:var(--body);color:var(--ink);}
 
   // ---- Setup flow ----
   if (token && tileKey) {
-    $("setup").classList.add("hidden"); boot();
+    $("setup").classList.add("hidden");
+    // Defer rather than call boot() inline here — at this point in the file the script is
+    // only partway through running top-to-bottom, so anything declared further down (like
+    // ALL_OWNERS, used by the owner-filter chips) doesn't exist yet. Calling boot() directly
+    // was throwing on that and killing it before it ever reached the Airtable fetch — which
+    // is the real reason the map/task list never loaded on a normal return visit (only a
+    // fresh first-time setup, or manually hitting the refresh icon afterward, worked).
+    setTimeout(boot, 0);
   } else if (token) {
     // Airtable's already connected from before; only the new map-tile key is missing.
     $("airtableSetupBlock").hidden = true;
