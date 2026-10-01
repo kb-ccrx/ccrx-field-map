@@ -1256,6 +1256,7 @@ body{font-family:var(--body);color:var(--ink);}
     if (c && c.stage) meta += stagePill(c.stage);
     if (c && c.interest) meta += pill(c.interest, INTEREST_COLORS);
     if (c && c.qualified) meta += pill(c.qualified, QUALIFIED_COLORS);
+    (item.owners||[]).forEach(function(o){ meta += pill(o, OWNER_COLORS); });
     if (item.due){
       var overdue = item.due <= todayISO();
       meta += '<span class="task-due'+(overdue?" overdue":"")+'">Due '+esc(fmtDateShort(item.due))+'</span>';
