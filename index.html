@@ -445,6 +445,7 @@ body{font-family:var(--body);color:var(--ink);}
   var loadInFlight = false; // true while a loadData() call is in progress, so overlapping triggers queue instead of racing
   var loadStartedAt = 0; // when the in-flight call started, so a never-ending one can't block forever
   var pendingReload = false; // set when loadData() was called again while one was already running
+  var lastLoadError = ""; // human-readable detail from the last failure, shown in the task list so reports carry real signal
 
   function $(id){ return document.getElementById(id); }
 
@@ -599,7 +600,13 @@ body{font-family:var(--body);color:var(--ink);}
           if (timeoutId) clearTimeout(timeoutId);
           if(!r.ok){
             var e = new Error("Airtable error "+r.status);
+            e.status = r.status;
             if (r.status===401 || r.status===403) e.authError = true;
+            // Airtable sends Retry-After on a 429 — honor it instead of guessing at a delay.
+            if (r.status===429){
+              var ra = r.headers.get ? r.headers.get("Retry-After") : null;
+              e.retryAfterMs = ra ? Math.max(500, parseFloat(ra)*1000) : null;
+            }
             throw e;
           }
           return r.json();
@@ -608,7 +615,7 @@ body{font-family:var(--body);color:var(--ink);}
           if (timeoutId) clearTimeout(timeoutId);
           if (err && err.authError) throw err;
           if (attempt >= 2) throw err;
-          var delay = [1500, 4000][attempt] || 4000;
+          var delay = (err && err.retryAfterMs) || [1500, 4000][attempt] || 4000;
           return new Promise(function(resolve){ setTimeout(resolve, delay); })
             .then(function(){ return fetchPageWithRetry(url, attempt+1); });
         });
@@ -660,6 +667,7 @@ body{font-family:var(--body);color:var(--ink);}
 
     $("countBadge").textContent = isRefresh ? "Refreshing…" : "Loading…";
     tasksLoadFailed = false;
+    lastLoadError = "";
 
     // Paint the map from Clinics alone as soon as it's back, instead of waiting on Contacts and
     // Tasks too — those only add contact names and the checklist, nothing the map needs to show pins.
@@ -675,18 +683,28 @@ body{font-family:var(--body);color:var(--ink);}
       if (!hasFitOnce && allRecords.length){ hasFitOnce = true; fitAll(); }
     }).catch(function(){ /* the combined handler below reports the real error */ });
 
-    // A hiccup on Contacts alone shouldn't block the checklist from ever loading either —
-    // isolate it the same way Tasks is isolated below, and just fall back to no contact names.
-    var contactsPromise = fetchAll(CONTACTS_TABLE, [CF.name, CF.clinic]).catch(function(err){
-      console.error("Contacts table load failed:", err);
+    // Run the three tables one after another instead of all at once. Airtable caps a base at
+    // 5 requests/second; three concurrently-paginating fetches (plus each one's own retries)
+    // could burst past that, especially on a slow mobile connection, and come back with 429s
+    // that looked like random "sometimes it loads, sometimes it doesn't" failures. Clinics goes
+    // first so the map still shows pins as fast as possible; each later fetch starts only once
+    // the one before it has settled (success OR failure), so one table's trouble never blocks
+    // the others from getting their own turn.
+    var tasksPromise = clinicsPromise.catch(function(){ return null; }).then(function(){
+      return fetchAll(TASKS_TABLE, Object.values(TF));
+    }).catch(function(err){
+      console.error("Tasks table load failed:", err);
+      tasksLoadFailed = true;
+      lastLoadError = "Tasks: " + (err && err.message ? err.message : "network error");
       if (err && err.authError) throw err;
       return [];
     });
-    // A hiccup on the Tasks table alone shouldn't blank the whole map — isolate it and note
-    // the failure so the checklist can say so, instead of wrongly claiming "nothing's open."
-    var tasksPromise = fetchAll(TASKS_TABLE, Object.values(TF)).catch(function(err){
-      console.error("Tasks table load failed:", err);
-      tasksLoadFailed = true;
+    // A hiccup on Contacts alone shouldn't block the checklist from ever loading either —
+    // isolate it the same way Tasks is isolated above, and just fall back to no contact names.
+    var contactsPromise = tasksPromise.catch(function(){ return null; }).then(function(){
+      return fetchAll(CONTACTS_TABLE, [CF.name, CF.clinic]);
+    }).catch(function(err){
+      console.error("Contacts table load failed:", err);
       if (err && err.authError) throw err;
       return [];
     });
@@ -760,6 +778,7 @@ body{font-family:var(--body);color:var(--ink);}
         $("setup").classList.remove("hidden");
         return;
       }
+      lastLoadError = "Clinics: " + (err && err.message ? err.message : "network error");
       $("countBadge").textContent = isRefresh ? "Refresh failed" : "Couldn't load — check connection";
       console.error(err);
       tasksLoadFailed = true;
@@ -1316,7 +1335,7 @@ body{font-family:var(--body);color:var(--ink);}
       // A definite failure always wins, even on the very first load — otherwise an error on
       // that first attempt gets masked forever by "still loading", which is exactly what was
       // happening: dataLoadedOnce never got a chance to become true, so the real error never showed.
-      if (tasksLoadFailed) emptyEl.textContent = "Couldn't load from Airtable. Close this, check the status badge on the map, and try the refresh icon — or check your key's access.";
+      if (tasksLoadFailed) emptyEl.textContent = "Couldn't load from Airtable" + (lastLoadError ? " (" + lastLoadError + ")" : "") + ". Close this, check the status badge on the map, and try the refresh icon — or check your key's access.";
       else if (!dataLoadedOnce) emptyEl.textContent = "Loading…";
       else emptyEl.textContent = "Nothing open. Nice work.";
     }
