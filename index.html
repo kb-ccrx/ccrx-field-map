@@ -443,6 +443,7 @@ body{font-family:var(--body);color:var(--ink);}
   var dataLoadedOnce = false; // false until the first successful loadData(), so we never say "nothing open" before we've actually loaded anything
   var tasksLoadFailed = false; // true when the Tasks table specifically failed to load on the last attempt
   var loadInFlight = false; // true while a loadData() call is in progress, so overlapping triggers queue instead of racing
+  var loadStartedAt = 0; // when the in-flight call started, so a never-ending one can't block forever
   var pendingReload = false; // set when loadData() was called again while one was already running
 
   function $(id){ return document.getElementById(id); }
@@ -537,13 +538,21 @@ body{font-family:var(--body);color:var(--ink);}
     setInterval(function(){ loadData(true); }, 5*60*1000);
 
     // Phones freeze a backgrounded tab/PWA — timers (including our fetch timeout) pause too, so a
-    // request that was in flight when you switched away can come back stuck instead of erroring out.
-    // Rather than trying to detect that, just force a fresh load every time the app becomes visible again.
+    // request that was in flight when you switched away can come back stuck instead of erroring out,
+    // and our own "don't double-load" guard below can get permanently stuck thinking one is still
+    // running. Whenever the app becomes visible again, clear that guard and force a fresh load —
+    // nothing from before the background period can be trusted at that point anyway.
     document.addEventListener("visibilitychange", function(){
-      if (document.visibilityState === "visible") loadData(true);
+      if (document.visibilityState === "visible"){
+        loadInFlight = false;
+        loadData(true);
+      }
     });
     window.addEventListener("pageshow", function(e){
-      if (e.persisted) loadData(true);
+      if (e.persisted){
+        loadInFlight = false;
+        loadData(true);
+      }
     });
   }
 
@@ -625,8 +634,15 @@ body{font-family:var(--body);color:var(--ink);}
     // app-resumed listener all firing close together) — that was leaving the badge stuck on
     // "Loading…" forever, because each call's result was getting stepped on by the next before
     // it could finish. Instead, queue at most one follow-up reload and run it after this one ends.
-    if (loadInFlight){ pendingReload = true; return; }
+    if (loadInFlight){
+      // A watchdog: if the "in-flight" call has been sitting for way longer than any real
+      // network request should take, assume it died silently (frozen in the background,
+      // a dropped connection) and take over rather than queuing forever behind it.
+      if (Date.now() - loadStartedAt < 30000){ pendingReload = true; return; }
+      console.warn("Previous load never finished — forcing a fresh one instead of waiting on it.");
+    }
     loadInFlight = true;
+    loadStartedAt = Date.now();
 
     $("countBadge").textContent = isRefresh ? "Refreshing…" : "Loading…";
     tasksLoadFailed = false;
