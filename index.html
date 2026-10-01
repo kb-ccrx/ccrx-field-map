@@ -1215,10 +1215,16 @@ body{font-family:var(--body);color:var(--ink);}
       else laterTasks.push(item);
     });
 
+    // Clinics that already have an open Task — covered under Field Follow-Ups above, so the
+    // Next Action field (if still set) would just be the same thing listed twice.
+    var clinicsWithOpenTask = {};
+    allTasks.forEach(function(t){ if (t.clinicId) clinicsWithOpenTask[t.clinicId] = true; });
+
     // Clinic Next Actions: the softer, clinic-level notes-to-self that never became a formal Task.
     Object.keys(allClinicsById).forEach(function(cid){
       var c = allClinicsById[cid];
       if (!c.nextAction || !c.nextAction.trim()) return;
+      if (clinicsWithOpenTask[cid]) return; // already shown as a Field Follow-Up — don't double-list it
       var owners = c.owner||[];
       if (!ownerAllowed(owners)) return;
       nextActions.push({ key:"next:"+cid, kind:"next", text:c.nextAction, due:null, owners:owners, clinic:c });
@@ -1390,7 +1396,13 @@ body{font-family:var(--body);color:var(--ink);}
     btn.disabled = true; btn.textContent = "Updating…";
     $("tasksFooterMsg").textContent = "Saving to Airtable…";
 
-    var taskRecords = [], clinicRecords = [], newTaskRecords = [];
+    var taskRecords = [], newTaskRecords = [];
+    // Keyed by clinic id so a "next" completion and a typed follow-up for the same clinic merge
+    // into one PATCH instead of two conflicting ones. The Next Action field is meant to be a
+    // mirror of whatever you type into this checklist now, not a second place to maintain by
+    // hand — so any typed follow-up overwrites it, and a completion with nothing typed clears it.
+    var clinicFieldUpdates = {};
+    function clinicUpdate(id){ return clinicFieldUpdates[id] || (clinicFieldUpdates[id] = {}); }
     var todayNice = new Date().toLocaleDateString("en-US", {month:"numeric", day:"numeric", year:"numeric"});
 
     checkedItems.forEach(function(key){
@@ -1408,20 +1420,28 @@ body{font-family:var(--body);color:var(--ink);}
         var oldNA = (c && c.nextAction) || "";
         var oldLog = (c && c.activityLog) || "";
         var newLog = todayNice + " — Completed via checklist: " + oldNA + (oldLog ? "\n"+oldLog : "");
-        var cf = {}; cf[F.nextAction] = ""; cf[F.activityLog] = newLog;
-        clinicRecords.push({ id:id, fields:cf });
+        var cu = clinicUpdate(id);
+        cu[F.nextAction] = ""; cu[F.activityLog] = newLog;
       }
 
       // The optional "what's next" capture — only creates a new Task if you actually typed something.
       var draft = followUpDrafts[key];
       if (draft && (draft.text||"").trim()){
+        var followUpText = draft.text.trim();
         var ntf = {};
-        ntf[TF.text] = draft.text.trim();
+        ntf[TF.text] = followUpText;
         if (clinicId) ntf[TF.clinic] = [clinicId];
         if (owners.length) ntf[TF.owner] = owners;
         if (draft.date) ntf[TF.due] = draft.date;
         newTaskRecords.push({ fields:ntf });
+        // Keep the clinic's Next Action in sync with the checklist, rather than something you'd
+        // ever go edit separately in Airtable — this is the one place that drives both.
+        if (clinicId) clinicUpdate(clinicId)[F.nextAction] = followUpText;
       }
+    });
+
+    var clinicRecords = Object.keys(clinicFieldUpdates).map(function(id){
+      return { id:id, fields:clinicFieldUpdates[id] };
     });
 
     var work = Promise.resolve();
