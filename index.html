@@ -586,11 +586,12 @@ body{font-family:var(--body);color:var(--ink);}
   // ---- Data loading ----
   function fetchAll(tableId, fieldIds){
     var records=[], offset=null;
-    function page(){
-      var url="https://api.airtable.com/v0/"+BASE_ID+"/"+tableId+"?pageSize=100&returnFieldsByFieldId=true";
-      fieldIds.forEach(function(f){ url+="&fields[]="+f; });
-      if (offset) url+="&offset="+offset;
-      // A hard timeout so a stalled connection surfaces as an error instead of hanging "Loading…" forever.
+    // Retry a single page a few times before giving up — an installed home-screen app can hit
+    // its very first request before Android has actually handed the webview a working network
+    // connection yet, and that was showing up as "no data at all" on cold open with no recovery
+    // short of a manual refresh. 401/403 (bad key) is never worth retrying.
+    function fetchPageWithRetry(url, attempt){
+      attempt = attempt || 0;
       var controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
       var timeoutId = controller ? setTimeout(function(){ controller.abort(); }, 20000) : null;
       return fetch(url, {headers:{Authorization:"Bearer "+token}, signal: controller ? controller.signal : undefined})
@@ -603,11 +604,24 @@ body{font-family:var(--body);color:var(--ink);}
           }
           return r.json();
         })
-        .then(function(data){
-          records = records.concat(data.records);
-          if (data.offset) { offset=data.offset; return page(); }
-          return records;
+        .catch(function(err){
+          if (timeoutId) clearTimeout(timeoutId);
+          if (err && err.authError) throw err;
+          if (attempt >= 2) throw err;
+          var delay = [1500, 4000][attempt] || 4000;
+          return new Promise(function(resolve){ setTimeout(resolve, delay); })
+            .then(function(){ return fetchPageWithRetry(url, attempt+1); });
         });
+    }
+    function page(){
+      var url="https://api.airtable.com/v0/"+BASE_ID+"/"+tableId+"?pageSize=100&returnFieldsByFieldId=true";
+      fieldIds.forEach(function(f){ url+="&fields[]="+f; });
+      if (offset) url+="&offset="+offset;
+      return fetchPageWithRetry(url).then(function(data){
+        records = records.concat(data.records);
+        if (data.offset) { offset=data.offset; return page(); }
+        return records;
+      });
     }
     return page();
   }
@@ -661,32 +675,34 @@ body{font-family:var(--body);color:var(--ink);}
       if (!hasFitOnce && allRecords.length){ hasFitOnce = true; fitAll(); }
     }).catch(function(){ /* the combined handler below reports the real error */ });
 
-    Promise.all([
-      clinicsPromise,
-      fetchAll(CONTACTS_TABLE, [CF.name, CF.clinic]),
-      // A hiccup on the Tasks table alone shouldn't blank the whole map — isolate it and note
-      // the failure so the checklist can say so, instead of wrongly claiming "nothing's open."
-      fetchAll(TASKS_TABLE, Object.values(TF)).catch(function(err){
-        console.error("Tasks table load failed:", err);
-        tasksLoadFailed = true;
-        if (err && err.authError) throw err;
-        return [];
-      })
-    ]).then(function(res){
-      var clinics = res[0], contacts = res[1], tasks = res[2];
-      var contactsByClinicId = {};
-      contacts.forEach(function(rec){
-        var f=rec.fields, linked=f[CF.clinic]||[];
-        var nm=f[CF.name]||"Unnamed";
-        (Array.isArray(linked)?linked:[]).forEach(function(cid){
-          (contactsByClinicId[cid]=contactsByClinicId[cid]||[]).push(nm);
-        });
-      });
+    // A hiccup on Contacts alone shouldn't block the checklist from ever loading either —
+    // isolate it the same way Tasks is isolated below, and just fall back to no contact names.
+    var contactsPromise = fetchAll(CONTACTS_TABLE, [CF.name, CF.clinic]).catch(function(err){
+      console.error("Contacts table load failed:", err);
+      if (err && err.authError) throw err;
+      return [];
+    });
+    // A hiccup on the Tasks table alone shouldn't blank the whole map — isolate it and note
+    // the failure so the checklist can say so, instead of wrongly claiming "nothing's open."
+    var tasksPromise = fetchAll(TASKS_TABLE, Object.values(TF)).catch(function(err){
+      console.error("Tasks table load failed:", err);
+      tasksLoadFailed = true;
+      if (err && err.authError) throw err;
+      return [];
+    });
+
+    // The checklist only needs Clinics (for names/stage/etc.) plus Tasks itself — it never shows
+    // contact names, so it shouldn't have to wait on Contacts too. Contacts has been the slower
+    // or occasionally-stuck leg on Kelley's installed Android app, and that was leaving the task
+    // list on "Loading…" long after the map (which only waits on Clinics) was already showing data.
+    var checklistReady = Promise.all([clinicsPromise, tasksPromise]).then(function(res){
+      var clinics = res[0], tasks = res[1];
 
       // Unfiltered clinic lookup for the checklist — a clinic missing lat/lng still has open tasks.
+      // No contact names yet here; the fullReady merge below fills those in once Contacts lands.
       allClinicsById = {};
       var clinicsMapped = clinics.map(function(rec){
-        var c = clinicRecToObj(rec, contactsByClinicId);
+        var c = clinicRecToObj(rec, {});
         allClinicsById[c.id] = c;
         return c;
       });
@@ -704,12 +720,40 @@ body{font-family:var(--body);color:var(--ink);}
         };
       }).filter(function(t){ return !t.done; });
 
-      renderMarkers(); // redraw now that contact names are attached too (cheap — just pins, not a refetch)
+      renderMarkers();
       $("countBadge").textContent = allRecords.length + " location" + (allRecords.length===1?"":"s");
       if (!hasFitOnce && allRecords.length){ hasFitOnce = true; fitAll(); }
       dataLoadedOnce = true;
       if ($("tasksScreen").classList.contains("show")) renderTasksScreen();
-    }).catch(function(err){
+      return clinics;
+    });
+
+    // Once Contacts comes in too (even if it lags behind Clinics/Tasks), merge contact names
+    // into the clinics the checklist/map are already showing. Purely cosmetic (popups + the
+    // checklist's clinic context line) — never blocks anything above.
+    var fullReady = Promise.all([checklistReady, contactsPromise]).then(function(res){
+      var clinics = res[0], contacts = res[1];
+      if (!contacts.length) return;
+      var contactsByClinicId = {};
+      contacts.forEach(function(rec){
+        var f=rec.fields, linked=f[CF.clinic]||[];
+        var nm=f[CF.name]||"Unnamed";
+        (Array.isArray(linked)?linked:[]).forEach(function(cid){
+          (contactsByClinicId[cid]=contactsByClinicId[cid]||[]).push(nm);
+        });
+      });
+      allClinicsById = {};
+      var clinicsMapped = clinics.map(function(rec){
+        var c = clinicRecToObj(rec, contactsByClinicId);
+        allClinicsById[c.id] = c;
+        return c;
+      });
+      allRecords = clinicsMapped.filter(function(c){ return typeof c.lat==="number" && typeof c.lng==="number"; });
+      renderMarkers();
+      if ($("tasksScreen").classList.contains("show")) renderTasksScreen();
+    });
+
+    fullReady.catch(function(err){
       if (err && err.authError){
         localStorage.removeItem(tokenKey); token = null;
         $("setupReauth").classList.add("show");
@@ -1269,8 +1313,11 @@ body{font-family:var(--body);color:var(--ink);}
       emptyEl.hidden = true;
     } else {
       emptyEl.hidden = false;
-      if (!dataLoadedOnce) emptyEl.textContent = "Loading…";
-      else if (tasksLoadFailed) emptyEl.textContent = "Couldn't load from Airtable. Close this, check the status badge on the map, and try the refresh icon — or check your key's access.";
+      // A definite failure always wins, even on the very first load — otherwise an error on
+      // that first attempt gets masked forever by "still loading", which is exactly what was
+      // happening: dataLoadedOnce never got a chance to become true, so the real error never showed.
+      if (tasksLoadFailed) emptyEl.textContent = "Couldn't load from Airtable. Close this, check the status badge on the map, and try the refresh icon — or check your key's access.";
+      else if (!dataLoadedOnce) emptyEl.textContent = "Loading…";
       else emptyEl.textContent = "Nothing open. Nice work.";
     }
     updateTasksFooter();
