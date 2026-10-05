@@ -359,7 +359,7 @@ body{font-family:var(--body);color:var(--ink);}
     name:"fldav47bI4XT5dkb3", stage:"fldNvkkh5aUeIpmZT", fit:"fldKZUvH2TdM7Ld2o",
     address:"fldWFIcsf0IHReFtx", lat:"flduCAwh8GOme6Pgg", lng:"fldagkN1z79b4wQn4",
     phone:"fldAx8T2wEb6NwmWv", website:"fldyexgBLmumzPu1S", notes:"fldZWk1z8NKDy16Tr",
-    nextAction:"fldgNCT1yZp5NWxHB", lastContact:"fld7uhRSvyAOwRa3H", contacts:"fldw47jnu1OR7ZL45",
+    gym:"fldFCMyxCkK3RUE2m", nextAction:"fldgNCT1yZp5NWxHB", lastContact:"fld7uhRSvyAOwRa3H", contacts:"fldw47jnu1OR7ZL45",
     qualified:"fld0SiKvkO12UfoEg", interest:"flde1WCOTSjvRAi6V", owner:"fldz8AKEDGn1TuKtW",
     activityLog:"fld2iM255ldam2YmP"
   };
@@ -394,7 +394,21 @@ body{font-family:var(--body);color:var(--ink);}
 
   // Shape+color pin so status is readable at a glance without the chip legend.
   // size: pixel box the svg renders in (kept small/consistent for chip use vs marker use)
-  function pinSVG(s, size){
+  // Gyms get a small barbell badge in the pin's top-right corner. It sits on top of the normal
+  // stage shape and color, so the pin still reads as its stage and the badge stays at every stage.
+  var GYM_BADGE = '<g transform="translate(20 4) scale(1.2) translate(-20 -4)">'+
+    '<circle cx="20" cy="4" r="6.4" fill="#1b2338" stroke="#fff" stroke-width="1.4"/>'+
+    '<line x1="16.6" y1="4" x2="23.4" y2="4" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>'+
+    '<rect x="17.3" y="1.4" width="1.6" height="5.2" rx=".6" fill="#fff"/>'+
+    '<rect x="21.1" y="1.4" width="1.6" height="5.2" rx=".6" fill="#fff"/>'+
+    '<rect x="15.9" y="2.6" width="1.1" height="2.8" rx=".4" fill="#fff"/>'+
+    '<rect x="23" y="2.6" width="1.1" height="2.8" rx=".4" fill="#fff"/></g>';
+  function pinSVG(s, size, gym){
+    var svg = pinSVGBase(s, size);
+    if (!gym) return svg;
+    return svg.replace('<svg ', '<svg style="overflow:visible" ').replace('</svg>', GYM_BADGE+'</svg>');
+  }
+  function pinSVGBase(s, size){
     var c = s.color, sz = size || 26;
     switch(s.shape){
       case "outline": // Target — not yet engaged
@@ -653,6 +667,7 @@ body{font-family:var(--body);color:var(--ink);}
       phone:f[F.phone], website:f[F.website], notes:f[F.notes],
       nextAction:f[F.nextAction], lastContact:f[F.lastContact],
       activityLog:f[F.activityLog],
+      gym: !!f[F.gym],
       contactNames:((contactsByClinicId||{})[rec.id]||[]).join(", ")
     };
   }
@@ -810,7 +825,7 @@ body{font-family:var(--body);color:var(--ink);}
       var s = stageColor[c.stage];
       var icon = L.divIcon({
         className:"pin",
-        html: pinSVG(s, s.shape==="star" ? 30 : 26),
+        html: pinSVG(s, s.shape==="star" ? 30 : 26, c.gym),
         iconSize:[28,28], iconAnchor:[14,14]
       });
       var m = L.marker([c.lat,c.lng], {icon:icon});
@@ -836,7 +851,7 @@ body{font-family:var(--body);color:var(--ink);}
   function openSheet(c){
     var s = stageColor[c.stage] || {color:"#8a8a8a"};
     var mapsQ = encodeURIComponent(c.address || (c.lat+","+c.lng));
-    var html = '<div class="sheet-stage" style="background:'+s.color+'">'+ (c.stage||"Unknown") +'</div>';
+    var html = '<div class="sheet-stage" style="background:'+s.color+'">'+ (c.stage||"Unknown") + (c.gym ? ' &middot; Gym' : '') +'</div>';
     if (c.fit) html += '<span class="sheet-fit">'+c.fit+'</span>';
     if (c.interest) html += pill(c.interest, INTEREST_COLORS);
     (c.owner||[]).forEach(function(o){ html += pill(o, OWNER_COLORS); });
@@ -925,7 +940,7 @@ body{font-family:var(--body);color:var(--ink);}
     routeMarkers = {};
     allRecords.forEach(function(c){
       var s = stageColor[c.stage] || {color:"#8a8a8a", shape:"circle"};
-      var icon = L.divIcon({ className:"pin", html:pinSVG(s, 24), iconSize:[26,26], iconAnchor:[13,13] });
+      var icon = L.divIcon({ className:"pin", html:pinSVG(s, 24, c.gym), iconSize:[26,26], iconAnchor:[13,13] });
       var m = L.marker([c.lat,c.lng], {icon:icon});
       m.on("click", function(){ toggleStopFromClinic(c); });
       m.addTo(routeMarkersLayer);
