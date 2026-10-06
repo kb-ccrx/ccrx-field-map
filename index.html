@@ -21,7 +21,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* ---- Design tokens -----
+/* ---- Design tokens ----
    Color: --navy (ink/structure), --gold (CCRX brand accent), --bg/--surface (map chrome),
           stage colors defined inline per marker/chip.
    Type: --display (Fraunces, headings/titles), --body (Inter, UI text/data).
@@ -72,7 +72,7 @@ body{font-family:var(--body);color:var(--ink);}
   background:linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,0));pointer-events:none;}
 #titlewrap{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;pointer-events:auto;}
 #titlewrap h1{font-family:var(--display);font-size:17px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);}
-#refreshBtn,#infoBtn{width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:var(--navy);
+#refreshBtn,#infoBtn,#searchBtn,#listBtn{width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:var(--navy);
   font-size:16px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);cursor:pointer;margin-left:8px;}
 #chips{display:flex;gap:6px;overflow-x:auto;pointer-events:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;}
 #chips::-webkit-scrollbar{display:none;}
@@ -217,6 +217,65 @@ body{font-family:var(--body);color:var(--ink);}
 #tasksFooterMsg{font-size:12.5px;font-weight:600;color:var(--ink-dim);}
 #tasksUpdateBtn{font-family:var(--body);font-weight:600;font-size:13.5px;padding:11px 18px;border-radius:10px;border:none;background:var(--navy);color:#fff;cursor:pointer;}
 #tasksUpdateBtn:disabled{background:var(--surface-2);color:var(--ink-dim);cursor:default;}
+
+/* ---- Map search panel ---- */
+#searchPanel{position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:1200;display:none;flex-direction:column;
+  background:var(--surface);border-radius:14px;box-shadow:var(--shadow);max-height:72vh;max-width:520px;}
+#searchPanel.show{display:flex;}
+#searchRow{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 14px;}
+#searchInput{flex:1;min-width:0;font-family:var(--body);font-size:16px;border:none;background:transparent;color:var(--ink);outline:none;padding:9px 0;}
+#searchClose{width:32px;height:32px;flex:0 0 auto;border-radius:50%;border:none;background:var(--surface-2);color:var(--ink-dim);font-size:18px;cursor:pointer;}
+#searchResults{overflow-y:auto;border-top:1px solid var(--line);-webkit-overflow-scrolling:touch;}
+#searchResults:empty{display:none;}
+.sr-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer;}
+.sr-item:last-child{border-bottom:none;}
+.sr-item:active{background:var(--surface-2);}
+.sr-pin{flex:0 0 26px;display:flex;align-items:center;justify-content:center;}
+.sr-name{font-size:14px;font-weight:600;color:var(--ink);line-height:1.3;}
+.sr-sub{font-size:12px;color:var(--ink-dim);line-height:1.35;margin-top:1px;}
+.sr-empty{padding:12px 14px;font-size:13px;color:var(--ink-dim);}
+
+/* ---- Locations list screen ---- */
+#listScreen{position:fixed;inset:0;z-index:2200;background:var(--bg);display:none;flex-direction:column;}
+#listScreen.show{display:flex;}
+#listHeader{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 10px;background:var(--navy);color:#fff;flex:0 0 auto;}
+#listHeader h1{font-family:var(--display);font-size:18px;}
+#listClose{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:18px;cursor:pointer;}
+#listTools{background:var(--surface);border-bottom:1px solid var(--line);padding:10px 14px;flex:0 0 auto;}
+#listSearch{width:100%;font-family:var(--body);font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);margin-bottom:8px;}
+#listToolRow{display:flex;gap:8px;}
+#listSort,#listDist{flex:1;min-width:0;font-family:var(--body);font-size:14px;font-weight:600;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);}
+#listFilterBtn{flex:0 0 auto;font-family:var(--body);font-weight:600;font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid var(--navy);background:transparent;color:var(--navy);cursor:pointer;}
+#listFilterBtn.has{background:var(--navy);color:#fff;}
+#listFilters{margin-top:10px;max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.lf-group{margin-bottom:12px;}
+.lf-title{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);margin-bottom:6px;}
+.lf-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.lf-chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--body);font-weight:600;font-size:12.5px;padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-dim);cursor:pointer;}
+.lf-chip.on{background:var(--navy);border-color:var(--navy);color:#fff;}
+.lf-chip .dot{display:inline-flex;width:14px;height:14px;align-items:center;justify-content:center;}
+#listMetaRow{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;flex:0 0 auto;font-size:12.5px;font-weight:600;color:var(--ink-dim);}
+#listClear{font-family:var(--body);font-weight:600;font-size:12.5px;border:none;background:transparent;color:var(--navy);cursor:pointer;text-decoration:underline;padding:4px 0;}
+#listMsg{padding:0 16px 6px;font-size:12.5px;color:#b0413e;flex:0 0 auto;}
+#listBody{flex:1 1 auto;min-height:0;overflow-y:auto;padding:0 12px calc(env(safe-area-inset-bottom,0px) + 16px);-webkit-overflow-scrolling:touch;}
+.loc-letter{position:sticky;top:0;z-index:1;background:var(--bg);font-family:var(--display);font-weight:700;font-size:14px;color:var(--navy);padding:8px 4px 4px;}
+.loc-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px;cursor:pointer;}
+.loc-row:active{background:var(--surface-2);}
+.loc-pin{flex:0 0 28px;display:flex;align-items:center;justify-content:center;}
+.loc-main{flex:1;min-width:0;}
+.loc-name{font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.3;}
+.loc-sub{font-size:12px;color:var(--ink-dim);line-height:1.4;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.loc-tags{margin-top:5px;display:flex;flex-wrap:wrap;gap:4px;}
+.loc-tags .pill{margin:0;}
+.loc-side{flex:0 0 auto;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px;}
+.loc-dist{font-size:12px;font-weight:700;color:var(--navy);}
+.loc-side .pill{margin:0;}
+#listEmpty{text-align:center;color:var(--ink-dim);font-size:14px;margin-top:40px;}
+
+/* The callout sheet opened from the list has to sit above the list screen (z-index 2200). */
+#sheetBackdrop.over{z-index:2300;}
+#sheet.over{z-index:2400;}
+.sheet-actions.second{margin-top:8px;}
 </style>
 </head>
 <body>
@@ -255,6 +314,8 @@ body{font-family:var(--body);color:var(--ink);}
   <div id="titlewrap">
     <h1>CCRX Field Map</h1>
     <div style="display:flex;pointer-events:auto;">
+      <button id="searchBtn" title="Search locations" aria-label="Search locations"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button>
+      <button id="listBtn" title="All locations (list)" aria-label="All locations (list)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="3.8" cy="6" r="1.2" fill="currentColor"/><circle cx="3.8" cy="12" r="1.2" fill="currentColor"/><circle cx="3.8" cy="18" r="1.2" fill="currentColor"/></svg></button>
       <button id="refreshBtn" title="Refresh">&#8635;</button>
       <button id="infoBtn" title="Info">i</button>
     </div>
@@ -262,10 +323,18 @@ body{font-family:var(--body);color:var(--ink);}
   <div id="chips"></div>
 </div>
 
+<div id="searchPanel">
+  <div id="searchRow">
+    <input id="searchInput" type="search" placeholder="Search by clinic name or address" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button id="searchClose" title="Close" aria-label="Close">&times;</button>
+  </div>
+  <div id="searchResults"></div>
+</div>
+
 <div id="countBadge">Loading…</div>
 
 <div id="controls">
-  <button class="fab" id="fitAllBtn" title="Zoom to fit all pins">&#8981;</button>
+  <button class="fab" id="fitAllBtn" title="Zoom to fit all pins" aria-label="Zoom to fit all pins"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
   <button class="fab" id="locateBtn" title="Show my location">&#9678;</button>
   <button class="fab" id="routeBtn" title="Plan a route">&#129517;</button>
   <button class="fab" id="tasksBtn" title="Follow-up checklist">&#9745;</button>
@@ -289,7 +358,8 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Pins are colored by Stage. Tap a chip to hide/show that stage. Tap a pin for details, directions, and a call button. The refresh icon pulls the latest from Airtable; it also auto-refreshes every 5 minutes while open.</p>
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-05 gym badge (b)</p>
+    <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-06 type pill (b)</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -329,6 +399,31 @@ body{font-family:var(--body);color:var(--ink);}
   </div>
 </div>
 
+<div id="listScreen">
+  <div id="listHeader">
+    <h1>Locations</h1>
+    <button id="listClose" title="Close" aria-label="Close">&times;</button>
+  </div>
+  <div id="listTools">
+    <input id="listSearch" type="search" placeholder="Search name, address, or contact" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div id="listToolRow">
+      <select id="listSort" aria-label="Sort">
+        <option value="az">Name A to Z</option>
+        <option value="za">Name Z to A</option>
+        <option value="near">Nearest to me</option>
+        <option value="stage">Pipeline stage</option>
+        <option value="due">Soonest follow-up due</option>
+        <option value="contact">Longest since contact</option>
+      </select>
+      <button id="listFilterBtn">Filters</button>
+    </div>
+    <div id="listFilters" hidden></div>
+  </div>
+  <div id="listMetaRow"><span id="listCount"></span><button id="listClear" hidden>Clear filters</button></div>
+  <div id="listMsg" hidden></div>
+  <div id="listBody"></div>
+</div>
+
 <div id="tasksScreen">
   <div id="tasksHeader">
     <h1>Follow-Ups</h1>
@@ -360,7 +455,7 @@ body{font-family:var(--body);color:var(--ink);}
     name:"fldav47bI4XT5dkb3", stage:"fldNvkkh5aUeIpmZT", fit:"fldKZUvH2TdM7Ld2o",
     address:"fldWFIcsf0IHReFtx", lat:"flduCAwh8GOme6Pgg", lng:"fldagkN1z79b4wQn4",
     phone:"fldAx8T2wEb6NwmWv", website:"fldyexgBLmumzPu1S", notes:"fldZWk1z8NKDy16Tr",
-    gym:"fldFCMyxCkK3RUE2m", nextAction:"fldgNCT1yZp5NWxHB", lastContact:"fld7uhRSvyAOwRa3H", contacts:"fldw47jnu1OR7ZL45",
+    gym:"fldFCMyxCkK3RUE2m", type:"fldYYsSmvWCdzdyKm", nextAction:"fldgNCT1yZp5NWxHB", lastContact:"fld7uhRSvyAOwRa3H", contacts:"fldw47jnu1OR7ZL45",
     qualified:"fld0SiKvkO12UfoEg", interest:"flde1WCOTSjvRAi6V", owner:"fldz8AKEDGn1TuKtW",
     activityLog:"fld2iM255ldam2YmP"
   };
@@ -388,6 +483,11 @@ body{font-family:var(--body);color:var(--ink);}
   var QUALIFIED_COLORS = { "Yes":{bg:"#b0eeb0",fg:"#1a7a2e"}, "No":{bg:"#ffc2cc",fg:"#8a1f30"}, "Unclear":{bg:"#ffe994",fg:"#7a5b00"} };
   var INTEREST_COLORS = { "Low":{bg:"#ffd9b3",fg:"#8a4b00"}, "Medium":{bg:"#fff3c4",fg:"#7a5b00"}, "High":{bg:"#b0eeb0",fg:"#1a7a2e"}, "Unclear":{bg:"#e3edff",fg:"#1f4f9e"} };
   var OWNER_COLORS = { "Kelley":{bg:"#e3edff",fg:"#1f4f9e"}, "Jennette":{bg:"#d6f5fd",fg:"#0b6a80"}, "Casey":{bg:"#c9f5ec",fg:"#0f6b5c"} };
+  var TYPE_COLORS = {
+    "Med Spa":{bg:"#ffd6e8",fg:"#8a1f55"}, "Medical Clinic":{bg:"#d6e6ff",fg:"#1f4f9e"}, "Longevity / Hormone":{bg:"#e6dcff",fg:"#4b2a8a"},
+    "Aesthetics / Skin":{bg:"#ffe2c4",fg:"#8a4b00"}, "Chiropractic":{bg:"#c9f5ec",fg:"#0f6b5c"}, "IV / Hydration":{bg:"#d6f5fd",fg:"#0b6a80"},
+    "Wellness Center":{bg:"#d9f5d0",fg:"#2b6a1a"}, "Gym":{bg:"#1b2338",fg:"#ffffff"}, "Other":{bg:"#eeeeee",fg:"#4a4a4a"}
+  };
   function pill(text, colorMap){
     var c = (colorMap && colorMap[text]) || {bg:"#eeeeee",fg:"#4a4a4a"};
     return '<span class="pill" style="background:'+c.bg+';color:'+c.fg+';">'+esc(text)+'</span>';
@@ -556,6 +656,8 @@ body{font-family:var(--body);color:var(--ink);}
     $("fitAllBtn").onclick = fitAll;
     wireRoute();
     wireTasks();
+    wireSearch();
+    wireList();
 
     loadData(false);
     setInterval(function(){ loadData(true); }, 5*60*1000);
@@ -668,7 +770,9 @@ body{font-family:var(--body);color:var(--ink);}
       phone:f[F.phone], website:f[F.website], notes:f[F.notes],
       nextAction:f[F.nextAction], lastContact:f[F.lastContact],
       activityLog:f[F.activityLog],
-      gym: !!f[F.gym],
+      type: (f[F.type] && f[F.type].name) || (typeof f[F.type]==="string" ? f[F.type] : null),
+      // Gym badge shows if either the Gym checkbox is ticked or Type is set to Gym.
+      gym: !!f[F.gym] || ((f[F.type] && f[F.type].name) || f[F.type]) === "Gym",
       contactNames:((contactsByClinicId||{})[rec.id]||[]).join(", ")
     };
   }
@@ -766,6 +870,7 @@ body{font-family:var(--body);color:var(--ink);}
       if (!hasFitOnce && allRecords.length){ hasFitOnce = true; fitAll(); }
       dataLoadedOnce = true;
       if ($("tasksScreen").classList.contains("show")) renderTasksScreen();
+      if ($("listScreen").classList.contains("show")) renderListScreen(false);
       return clinics;
     });
 
@@ -792,6 +897,7 @@ body{font-family:var(--body);color:var(--ink);}
       allRecords = clinicsMapped.filter(function(c){ return typeof c.lat==="number" && typeof c.lng==="number"; });
       renderMarkers();
       if ($("tasksScreen").classList.contains("show")) renderTasksScreen();
+      if ($("listScreen").classList.contains("show")) renderListScreen(false);
     });
 
     fullReady.catch(function(err){
@@ -853,6 +959,7 @@ body{font-family:var(--body);color:var(--ink);}
     var s = stageColor[c.stage] || {color:"#8a8a8a"};
     var mapsQ = encodeURIComponent(c.address || (c.lat+","+c.lng));
     var html = '<div class="sheet-stage" style="background:'+s.color+'">'+ (c.stage||"Unknown") + (c.gym ? ' &middot; Gym' : '') +'</div>';
+    if (c.type) html += '<span class="sheet-fit" style="background:'+(TYPE_COLORS[c.type]||TYPE_COLORS.Other).bg+';color:'+(TYPE_COLORS[c.type]||TYPE_COLORS.Other).fg+';border-color:transparent;">'+esc(c.type)+'</span>';
     if (c.fit) html += '<span class="sheet-fit">'+c.fit+'</span>';
     if (c.interest) html += pill(c.interest, INTEREST_COLORS);
     (c.owner||[]).forEach(function(o){ html += pill(o, OWNER_COLORS); });
@@ -869,9 +976,19 @@ body{font-family:var(--body);color:var(--ink);}
     html += '<a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+mapsQ+'">Directions</a>';
     if (c.phone) html += '<a href="tel:'+esc(c.phone.replace(/[^0-9+]/g,""))+'">Call</a>';
     html += '</div>';
+    // Opened from the Locations list: add a "Show on map" button, and lift the sheet above the list screen.
+    var fromList = $("listScreen").classList.contains("show");
+    if (fromList && typeof c.lat==="number" && typeof c.lng==="number"){
+      html += '<div class="sheet-actions second"><button id="sheetShowOnMap">Show on map</button></div>';
+    }
     $("sheetBody").innerHTML = html;
+    $("sheet").classList.toggle("over", fromList);
+    $("sheetBackdrop").classList.toggle("over", fromList);
+    $("sheet").scrollTop = 0;
     $("sheet").classList.add("show");
     $("sheetBackdrop").classList.add("show");
+    var showBtn = $("sheetShowOnMap");
+    if (showBtn) showBtn.onclick = function(){ closeListScreen(); focusOnClinic(c); };
   }
   function row(label,val){ return '<div class="sheet-row"><div class="lbl">'+label+'</div><div class="val">'+val+'</div></div>'; }
   function esc(s){ var d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
@@ -897,6 +1014,7 @@ body{font-family:var(--body);color:var(--ink);}
     var first=true;
     watchId = navigator.geolocation.watchPosition(function(pos){
       var ll=[pos.coords.latitude,pos.coords.longitude];
+      userPos = {lat:ll[0], lng:ll[1]};
       if (!meMarker){
         meMarker = L.marker(ll,{icon:L.divIcon({className:"pin",html:'<div class="you-are-here"></div>',iconSize:[18,18],iconAnchor:[9,9]})}).addTo(map);
         meCircle = L.circle(ll,{radius:pos.coords.accuracy,color:"#2f6fed",weight:1,fillOpacity:.08}).addTo(map);
@@ -1480,6 +1598,369 @@ body{font-family:var(--body);color:var(--ink);}
       }
       console.error(err);
     });
+  }
+
+  // ==================== Shared helpers: find a clinic, jump to it on the map ====================
+  var userPos = null; // {lat,lng} once known (from the locate button or a one-time lookup for distance sorting)
+
+  function clinicMatches(c, q){
+    var hay = ((c.name||"")+" "+(c.address||"")+" "+(c.contactNames||"")).toLowerCase();
+    return q.split(/\s+/).filter(Boolean).every(function(w){ return hay.indexOf(w) !== -1; });
+  }
+  function allClinicsList(){
+    return Object.keys(allClinicsById).map(function(id){ return allClinicsById[id]; });
+  }
+  function stageOf(c){ return stageColor[c.stage] || {color:"#8a8a8a", shape:"circle"}; }
+
+  // Center the pin in the upper part of the screen (the callout covers the lower part), then open the callout.
+  function focusOnClinic(c){
+    if (typeof c.lat==="number" && typeof c.lng==="number"){
+      // Make sure the pin is actually visible: turn its stage back on if that chip was off.
+      var stg = c.stage || "Unknown";
+      if (!activeStages.has(stg)){ activeStages.add(stg); renderChipState(); applyFilter(); }
+      map.setView([c.lat, c.lng], 17, {animate:false});
+      map.panBy([0, Math.round(map.getSize().y * 0.26)], {animate:false});
+    }
+    openSheet(c);
+  }
+
+  // ==================== Map search ====================
+  function openSearch(){
+    $("searchPanel").classList.add("show");
+    $("searchInput").value = "";
+    renderSearchResults();
+    $("searchInput").focus();
+  }
+  function closeSearch(){
+    $("searchPanel").classList.remove("show");
+    $("searchInput").blur();
+  }
+  function renderSearchResults(){
+    var q = $("searchInput").value.trim().toLowerCase();
+    var box = $("searchResults");
+    box.innerHTML = "";
+    if (!q) return;
+    var hits = allClinicsList().filter(function(c){ return clinicMatches(c, q); });
+    hits.sort(function(a,b){
+      var as = (a.name||"").toLowerCase().indexOf(q)===0 ? 0 : 1, bs = (b.name||"").toLowerCase().indexOf(q)===0 ? 0 : 1;
+      return as-bs || (a.name||"").localeCompare(b.name||"");
+    });
+    if (!hits.length){
+      box.innerHTML = '<div class="sr-empty">' + (dataLoadedOnce ? 'No matches.' : 'Still loading, try again in a moment.') + '</div>';
+      return;
+    }
+    hits.slice(0, 8).forEach(function(c){
+      var d = document.createElement("div");
+      d.className = "sr-item";
+      d.innerHTML = '<div class="sr-pin">'+pinSVG(stageOf(c), 22, c.gym)+'</div>'+
+        '<div><div class="sr-name">'+esc(c.name)+'</div><div class="sr-sub">'+esc((c.stage||"Unknown")+(c.address ? " · "+c.address : ""))+'</div></div>';
+      d.onclick = function(){ closeSearch(); focusOnClinic(c); };
+      box.appendChild(d);
+    });
+    if (hits.length > 8){
+      var more = document.createElement("div");
+      more.className = "sr-empty";
+      more.textContent = (hits.length-8) + " more. Keep typing to narrow it down.";
+      box.appendChild(more);
+    }
+  }
+  function wireSearch(){
+    $("searchBtn").onclick = openSearch;
+    $("searchClose").onclick = closeSearch;
+    $("searchInput").oninput = renderSearchResults;
+    document.addEventListener("keydown", function(e){
+      if (e.key === "Escape" && $("searchPanel").classList.contains("show")) closeSearch();
+    });
+  }
+
+  // ==================== Locations list ====================
+  var STAGE_ORDER = STAGES.map(function(s){ return s.name; });
+  var FIT_OPTIONS = ["White Label","B2B","Both","Unclear","Not set"];
+  var INTEREST_OPTIONS = ["High","Medium","Low","Unclear","Not set"];
+  var TYPE_OPTIONS = ["Med Spa","Medical Clinic","Longevity / Hormone","Aesthetics / Skin","Chiropractic","IV / Hydration","Wellness Center","Gym","Other","Not set"];
+  var OWNER_OPTIONS = ["Kelley","Jennette","Casey","Unassigned"];
+  var listState = null;
+  function resetListState(){
+    var keepSort = listState ? listState.sort : "az";
+    listState = { q:"", sort:keepSort, stages:new Set(), fits:new Set(), interests:new Set(), types:new Set(), owners:new Set(),
+                  openOnly:false, overdueOnly:false, maxMiles:0 };
+  }
+  resetListState();
+
+  function activeFilterCount(){
+    var s = listState;
+    return s.stages.size + s.fits.size + s.interests.size + s.types.size + s.owners.size +
+           (s.openOnly?1:0) + (s.overdueOnly?1:0) + (s.maxMiles?1:0);
+  }
+
+  // Open follow-ups per clinic: its open Tasks, plus its Next Action note when no Task covers it.
+  function taskStatsByClinic(){
+    var today = todayISO(), m = {};
+    allTasks.forEach(function(t){
+      if (!t.clinicId) return;
+      var s = m[t.clinicId] || (m[t.clinicId] = {count:0, overdue:0, nextDue:null});
+      s.count++;
+      if (t.due){
+        if (t.due < today) s.overdue++;
+        if (!s.nextDue || t.due < s.nextDue) s.nextDue = t.due;
+      }
+    });
+    return m;
+  }
+
+  function buildListRows(){
+    var stats = taskStatsByClinic(), s = listState, q = s.q.trim().toLowerCase();
+    var rows = [];
+    allClinicsList().forEach(function(c){
+      var st = stats[c.id] || {count:0, overdue:0, nextDue:null};
+      var hasNext = !!(c.nextAction && c.nextAction.trim());
+      var dist = (userPos && typeof c.lat==="number" && typeof c.lng==="number") ? haversineMiles(userPos.lat, userPos.lng, c.lat, c.lng) : null;
+      var row = { c:c, open: st.count || (hasNext ? 1 : 0), overdue:st.overdue, nextDue:st.nextDue, dist:dist };
+
+      if (q && !clinicMatches(c, q)) return;
+      if (s.stages.size && !s.stages.has(c.stage || "Unknown")) return;
+      if (s.fits.size && !s.fits.has(c.fit || "Not set")) return;
+      if (s.interests.size && !s.interests.has(c.interest || "Not set")) return;
+      if (s.types.size && !s.types.has(c.type || (c.gym ? "Gym" : "Not set"))) return;
+      if (s.owners.size){
+        var os = (c.owner && c.owner.length) ? c.owner : ["Unassigned"];
+        if (!os.some(function(o){ return s.owners.has(o); })) return;
+      }
+      if (s.openOnly && !row.open) return;
+      if (s.overdueOnly && !row.overdue) return;
+      if (s.maxMiles && userPos && (dist === null || dist > s.maxMiles)) return;
+      rows.push(row);
+    });
+
+    function nameCmp(a,b){ return (a.c.name||"").localeCompare(b.c.name||"", undefined, {sensitivity:"base"}); }
+    var cmp;
+    switch (s.sort){
+      case "za": cmp = function(a,b){ return nameCmp(b,a); }; break;
+      case "near": cmp = function(a,b){
+        if (a.dist===null && b.dist===null) return nameCmp(a,b);
+        if (a.dist===null) return 1; if (b.dist===null) return -1;
+        return a.dist-b.dist; }; break;
+      case "stage": cmp = function(a,b){
+        var ai = STAGE_ORDER.indexOf(a.c.stage), bi = STAGE_ORDER.indexOf(b.c.stage);
+        if (ai<0) ai = 99; if (bi<0) bi = 99;
+        return ai-bi || nameCmp(a,b); }; break;
+      case "due": cmp = function(a,b){
+        if (a.nextDue && b.nextDue) return a.nextDue<b.nextDue?-1:a.nextDue>b.nextDue?1:nameCmp(a,b);
+        if (a.nextDue) return -1; if (b.nextDue) return 1;
+        if (a.open && !b.open) return -1; if (b.open && !a.open) return 1;
+        return nameCmp(a,b); }; break;
+      case "contact": cmp = function(a,b){
+        var al = a.c.lastContact || "", bl = b.c.lastContact || "";
+        if (al===bl) return nameCmp(a,b);
+        if (!al) return -1; if (!bl) return 1; // never contacted first, then oldest
+        return al<bl?-1:1; }; break;
+      default: cmp = nameCmp;
+    }
+    rows.sort(cmp);
+    return rows;
+  }
+
+  function listRowEl(r){
+    var c = r.c, d = document.createElement("div");
+    d.className = "loc-row";
+    var tags = "";
+    if (c.type) tags += pill(c.type, TYPE_COLORS);
+    else if (c.gym) tags += pill("Gym", TYPE_COLORS);
+    if (c.fit) tags += '<span class="pill" style="background:#eeeeee;color:#4a4a4a;">'+esc(c.fit)+'</span>';
+    if (c.interest) tags += pill(c.interest, INTEREST_COLORS);
+    (c.owner||[]).forEach(function(o){ tags += pill(o, OWNER_COLORS); });
+    var side = "";
+    if (r.dist !== null) side += '<span class="loc-dist">'+(r.dist<10 ? r.dist.toFixed(1) : Math.round(r.dist))+' mi</span>';
+    if (r.overdue) side += '<span class="pill" style="background:#ffc2cc;color:#8a1f30;">'+r.overdue+' overdue</span>';
+    else if (r.open) side += '<span class="pill" style="background:#fff3c4;color:#7a5b00;">'+r.open+' open</span>';
+    d.innerHTML =
+      '<div class="loc-pin">'+pinSVG(stageOf(c), 24, c.gym)+'</div>'+
+      '<div class="loc-main"><div class="loc-name">'+esc(c.name)+'</div>'+
+        '<div class="loc-sub">'+esc((c.stage||"Unknown")+(c.address ? " · "+c.address : ""))+'</div>'+
+        (tags ? '<div class="loc-tags">'+tags+'</div>' : '')+'</div>'+
+      (side ? '<div class="loc-side">'+side+'</div>' : '');
+    d.onclick = function(){ openSheet(c); };
+    return d;
+  }
+
+  function renderListScreen(resetScroll){
+    var body = $("listBody"), prevTop = body.scrollTop;
+    var total = Object.keys(allClinicsById).length;
+    var rows = buildListRows();
+    var frag = document.createDocumentFragment();
+
+    if (!total){
+      var e = document.createElement("div");
+      e.id = "listEmpty";
+      e.textContent = dataLoadedOnce ? "No locations yet." : (tasksLoadFailed && lastLoadError ? "Couldn't load. " + lastLoadError : "Loading…");
+      frag.appendChild(e);
+    } else if (!rows.length){
+      var e2 = document.createElement("div");
+      e2.id = "listEmpty";
+      e2.textContent = "No locations match. Try clearing a filter.";
+      frag.appendChild(e2);
+    } else {
+      var byName = (listState.sort==="az" || listState.sort==="za"), lastLetter = null;
+      rows.forEach(function(r){
+        if (byName){
+          var ch = ((r.c.name||"").trim().charAt(0) || "#").toUpperCase();
+          if (!/[A-Z]/.test(ch)) ch = "#";
+          if (ch !== lastLetter){
+            var h = document.createElement("div");
+            h.className = "loc-letter"; h.textContent = ch;
+            frag.appendChild(h);
+            lastLetter = ch;
+          }
+        }
+        frag.appendChild(listRowEl(r));
+      });
+    }
+    body.innerHTML = "";
+    body.appendChild(frag);
+    body.scrollTop = resetScroll ? 0 : prevTop;
+
+    $("listCount").textContent = total ? (rows.length + " of " + total + " location" + (total===1?"":"s")) : "";
+    var n = activeFilterCount();
+    $("listFilterBtn").textContent = n ? "Filters (" + n + ")" : "Filters";
+    $("listFilterBtn").classList.toggle("has", n > 0);
+    $("listClear").hidden = !(n > 0 || listState.q);
+  }
+
+  function setListMsg(text){
+    var m = $("listMsg");
+    m.textContent = text || "";
+    m.hidden = !text;
+  }
+
+  // Distance sorting and the distance filter both need to know where you are.
+  function needsPos(){ return listState.sort === "near" || listState.maxMiles > 0; }
+  function ensurePos(done){
+    if (userPos || !needsPos()){ setListMsg(""); done(); return; }
+    if (!navigator.geolocation){
+      setListMsg("This browser can't share your location, so distance isn't available.");
+      listState.sort = (listState.sort==="near") ? "az" : listState.sort; listState.maxMiles = 0;
+      syncListControls(); done(); return;
+    }
+    setListMsg("Finding your location…");
+    navigator.geolocation.getCurrentPosition(function(pos){
+      userPos = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+      setListMsg(""); done();
+    }, function(err){
+      setListMsg("Couldn't get your location (" + err.message + "). Allow location for this site to sort or filter by distance.");
+      if (listState.sort==="near") listState.sort = "az";
+      listState.maxMiles = 0;
+      syncListControls(); done();
+    }, {enableHighAccuracy:false, maximumAge:120000, timeout:12000});
+  }
+  function syncListControls(){
+    $("listSort").value = listState.sort;
+    var dist = $("listDist"); if (dist) dist.value = String(listState.maxMiles);
+  }
+
+  function buildListFilters(){
+    var wrap = $("listFilters"); wrap.innerHTML = "";
+    function group(title, options, set){
+      var g = document.createElement("div"); g.className = "lf-group";
+      var t = document.createElement("div"); t.className = "lf-title"; t.textContent = title; g.appendChild(t);
+      var row = document.createElement("div"); row.className = "lf-chips";
+      options.forEach(function(o){
+        var b = document.createElement("button");
+        b.className = "lf-chip" + (set.has(o.v) ? " on" : "");
+        b.innerHTML = (o.html || "") + esc(o.v);
+        b.onclick = function(){
+          if (set.has(o.v)) set.delete(o.v); else set.add(o.v);
+          b.classList.toggle("on", set.has(o.v));
+          renderListScreen(true);
+        };
+        row.appendChild(b);
+      });
+      g.appendChild(row); wrap.appendChild(g);
+    }
+    function toggle(title, label, key){
+      var g = document.createElement("div"); g.className = "lf-group";
+      var t = document.createElement("div"); t.className = "lf-title"; t.textContent = title; g.appendChild(t);
+      var row = document.createElement("div"); row.className = "lf-chips";
+      var b = document.createElement("button");
+      b.className = "lf-chip" + (listState[key] ? " on" : ""); b.textContent = label;
+      b.onclick = function(){ listState[key] = !listState[key]; b.classList.toggle("on", listState[key]); renderListScreen(true); };
+      row.appendChild(b); g.appendChild(row); wrap.appendChild(g);
+    }
+    group("Pipeline stage", STAGES.map(function(s){
+      return {v:s.name, html:'<span class="dot">'+pinSVG(s,14)+'</span>'};
+    }), listState.stages);
+    group("Type", TYPE_OPTIONS.map(function(v){ return {v:v}; }), listState.types);
+    group("Fit", FIT_OPTIONS.map(function(v){ return {v:v}; }), listState.fits);
+    group("Interest", INTEREST_OPTIONS.map(function(v){ return {v:v}; }), listState.interests);
+    group("Owner", OWNER_OPTIONS.map(function(v){ return {v:v}; }), listState.owners);
+
+    var ag = document.createElement("div"); ag.className = "lf-group";
+    ag.innerHTML = '<div class="lf-title">Action items</div>';
+    var ar = document.createElement("div"); ar.className = "lf-chips";
+    [["Has open items","openOnly"],["Has overdue items","overdueOnly"]].forEach(function(p){
+      var b = document.createElement("button");
+      b.className = "lf-chip" + (listState[p[1]] ? " on" : ""); b.textContent = p[0];
+      b.onclick = function(){ listState[p[1]] = !listState[p[1]]; b.classList.toggle("on", listState[p[1]]); renderListScreen(true); };
+      ar.appendChild(b);
+    });
+    ag.appendChild(ar); wrap.appendChild(ag);
+
+    var dg = document.createElement("div"); dg.className = "lf-group";
+    dg.innerHTML = '<div class="lf-title">Distance from me</div>';
+    var sel = document.createElement("select"); sel.id = "listDist";
+    [["0","Any distance"],["2","Within 2 miles"],["5","Within 5 miles"],["10","Within 10 miles"],["25","Within 25 miles"],["50","Within 50 miles"]].forEach(function(p){
+      var o = document.createElement("option"); o.value = p[0]; o.textContent = p[1]; sel.appendChild(o);
+    });
+    sel.value = String(listState.maxMiles);
+    sel.onchange = function(){
+      listState.maxMiles = parseInt(sel.value, 10) || 0;
+      ensurePos(function(){ renderListScreen(true); });
+    };
+    dg.appendChild(sel); wrap.appendChild(dg);
+  }
+
+  function openListScreen(){
+    $("listScreen").classList.add("show");
+    syncListControls();
+    $("listSearch").value = listState.q;
+    buildListFilters();
+    renderListScreen(true);
+    // If location is already allowed, quietly pick it up so distances show without any extra tap.
+    if (!userPos && navigator.permissions && navigator.permissions.query && navigator.geolocation){
+      try {
+        navigator.permissions.query({name:"geolocation"}).then(function(p){
+          if (p.state === "granted"){
+            navigator.geolocation.getCurrentPosition(function(pos){
+              userPos = {lat:pos.coords.latitude, lng:pos.coords.longitude};
+              if ($("listScreen").classList.contains("show")) renderListScreen(false);
+            }, function(){}, {enableHighAccuracy:false, maximumAge:300000, timeout:8000});
+          }
+        }).catch(function(){});
+      } catch(e){}
+    }
+    ensurePos(function(){ renderListScreen(true); });
+  }
+  function closeListScreen(){ $("listScreen").classList.remove("show"); }
+
+  function wireList(){
+    $("listBtn").onclick = openListScreen;
+    $("listClose").onclick = closeListScreen;
+    $("listSearch").oninput = function(){ listState.q = $("listSearch").value; renderListScreen(true); };
+    $("listSort").onchange = function(){
+      listState.sort = $("listSort").value;
+      ensurePos(function(){ renderListScreen(true); });
+    };
+    $("listFilterBtn").onclick = function(){
+      var f = $("listFilters");
+      f.hidden = !f.hidden;
+    };
+    $("listClear").onclick = function(){
+      resetListState();
+      $("listSearch").value = "";
+      syncListControls();
+      buildListFilters();
+      setListMsg("");
+      renderListScreen(true);
+    };
   }
 
   function wireTasks(){
