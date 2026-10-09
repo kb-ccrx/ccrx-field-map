@@ -276,6 +276,24 @@ body{font-family:var(--body);color:var(--ink);}
 #sheetBackdrop.over{z-index:2300;}
 #sheet.over{z-index:2400;}
 .sheet-actions.second{margin-top:8px;}
+.sheet-actions .brief-btn{background:var(--gold);color:#1b2338;border-color:var(--gold);}
+#briefScreen{position:fixed;inset:0;z-index:2500;background:var(--bg);display:none;flex-direction:column;}
+#briefScreen.show{display:flex;}
+#briefHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 10px;background:var(--navy);color:#fff;flex:0 0 auto;}
+#briefHeader h1{font-family:var(--display);font-size:18px;line-height:1.25;}
+#briefClose{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:18px;cursor:pointer;flex:0 0 auto;}
+#briefBody{flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 28px);}
+.brief-sec{margin-top:20px;}
+.brief-sec h3{font-family:var(--body);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line);}
+.brief-text{font-size:14.5px;line-height:1.6;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
+.brief-fit{display:inline-block;font-weight:700;font-size:12px;color:var(--navy);margin-bottom:6px;}
+.brief-note{margin-top:20px;font-size:12.5px;color:var(--ink-dim);background:var(--surface-2);border-radius:10px;padding:10px 12px;line-height:1.5;}
+.player{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:9px;}
+.player-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.player-name{font-weight:600;font-size:14.5px;color:var(--ink);}
+.player-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:13.5px;}
+.player-links a{color:var(--navy);font-weight:600;word-break:break-all;}
+.player-notes{margin-top:6px;font-size:13px;line-height:1.5;color:var(--ink-dim);white-space:pre-wrap;}
 </style>
 </head>
 <body>
@@ -359,7 +377,7 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-06 type pill (b)</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-09 type badges</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -440,6 +458,14 @@ body{font-family:var(--body);color:var(--ink);}
   </div>
 </div>
 
+<div id="briefScreen">
+  <div id="briefHeader">
+    <h1 id="briefTitle"></h1>
+    <button id="briefClose" title="Close" aria-label="Close">&times;</button>
+  </div>
+  <div id="briefBody"></div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
 <script>
@@ -457,9 +483,12 @@ body{font-family:var(--body);color:var(--ink);}
     phone:"fldAx8T2wEb6NwmWv", website:"fldyexgBLmumzPu1S", notes:"fldZWk1z8NKDy16Tr",
     gym:"fldFCMyxCkK3RUE2m", type:"fldYYsSmvWCdzdyKm", nextAction:"fldgNCT1yZp5NWxHB", lastContact:"fld7uhRSvyAOwRa3H", contacts:"fldw47jnu1OR7ZL45",
     qualified:"fld0SiKvkO12UfoEg", interest:"flde1WCOTSjvRAi6V", owner:"fldz8AKEDGn1TuKtW",
-    activityLog:"fld2iM255ldam2YmP"
+    activityLog:"fld2iM255ldam2YmP",
+    profile:"fldPgzy6O2gq7zdCV", email:"fldqo1WXzP1YSZTm0", nextMeeting:"fld1eHqCpMUeqUlQG",
+    bSnap:"fldJuBm06RYjCQmrc", bFit:"fldgC8npbKOiA8NaA", bPresc:"fldET6l3SntUcxQ6R",
+    bBridge:"fldZpL1fypkFqFicE", bKnow:"fld21l33eHEl4PnGK"
   };
-  var CF = { name:"fld5SWDkRHf3epyYD", clinic:"fldInKK6h0cRnOAC7" }; // Contacts field IDs
+  var CF = { name:"fld5SWDkRHf3epyYD", clinic:"fldInKK6h0cRnOAC7", role:"fldptYg8yoGdrzP58", phone:"fldc49tNM7ZgGUBew", email:"fldosuZJj2OyAOsDa", notes:"fldYuTso9QliGstdW" }; // Contacts field IDs
   var TF = { // Tasks field IDs
     text:"fldgsqV55AKR63bTX", clinic:"fldOIalo6eTDN6XU3", owner:"fldtEhw2i8gAKMf3L",
     due:"fldDi4t0txypYvPlQ", done:"fldUNQaO6q4Ke4Tt5"
@@ -486,7 +515,7 @@ body{font-family:var(--body);color:var(--ink);}
   var TYPE_COLORS = {
     "Med Spa":{bg:"#ffd6e8",fg:"#8a1f55"}, "Medical Clinic":{bg:"#d6e6ff",fg:"#1f4f9e"}, "Longevity / Hormone":{bg:"#e6dcff",fg:"#4b2a8a"},
     "Aesthetics / Skin":{bg:"#ffe2c4",fg:"#8a4b00"}, "Chiropractic":{bg:"#c9f5ec",fg:"#0f6b5c"}, "IV / Hydration":{bg:"#d6f5fd",fg:"#0b6a80"},
-    "Wellness Center":{bg:"#d9f5d0",fg:"#2b6a1a"}, "Gym":{bg:"#1b2338",fg:"#ffffff"}, "Other":{bg:"#eeeeee",fg:"#4a4a4a"}
+    "Wellness Center":{bg:"#d9f5d0",fg:"#2b6a1a"}, "Hair / Nail Salon":{bg:"#ffe0f0",fg:"#8a1f55"}, "Tanning Salon":{bg:"#fff0b8",fg:"#7a5b00"}, "Massage / Day Spa":{bg:"#e0f2e9",fg:"#1f6a45"}, "Weight Loss Clinic":{bg:"#e3edff",fg:"#1f4f9e"}, "Gym":{bg:"#1b2338",fg:"#ffffff"}, "Other":{bg:"#eeeeee",fg:"#4a4a4a"}
   };
   function pill(text, colorMap){
     var c = (colorMap && colorMap[text]) || {bg:"#eeeeee",fg:"#4a4a4a"};
@@ -497,17 +526,53 @@ body{font-family:var(--body);color:var(--ink);}
   // size: pixel box the svg renders in (kept small/consistent for chip use vs marker use)
   // Gyms get a small barbell badge in the pin's top-right corner. It sits on top of the normal
   // stage shape and color, so the pin still reads as its stage and the badge stays at every stage.
-  var GYM_BADGE = '<g transform="translate(20 4) scale(1.2) translate(-20 -4)">'+
-    '<circle cx="20" cy="4" r="6.4" fill="#1b2338" stroke="#fff" stroke-width="1.4"/>'+
-    '<line x1="16.6" y1="4" x2="23.4" y2="4" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>'+
-    '<rect x="17.3" y="1.4" width="1.6" height="5.2" rx=".6" fill="#fff"/>'+
-    '<rect x="21.1" y="1.4" width="1.6" height="5.2" rx=".6" fill="#fff"/>'+
-    '<rect x="15.9" y="2.6" width="1.1" height="2.8" rx=".4" fill="#fff"/>'+
-    '<rect x="23" y="2.6" width="1.1" height="2.8" rx=".4" fill="#fff"/></g>';
-  function pinSVG(s, size, gym){
+  var BADGE_WRAP_OPEN = '<g transform="translate(20 4) scale(1.2) translate(-20 -4)"><circle cx="20" cy="4" r="6.4" fill="#1b2338" stroke="#fff" stroke-width="1.4"/>';
+  var BADGE_GLYPHS = {
+    gym:
+      '<line x1="16.6" y1="4" x2="23.4" y2="4" stroke="#fff" stroke-width="1.1" stroke-linecap="round"/>'+
+      '<rect x="17.3" y="1.4" width="1.6" height="5.2" rx=".6" fill="#fff"/>'+
+      '<rect x="21.1" y="1.4" width="1.6" height="5.2" rx=".6" fill="#fff"/>'+
+      '<rect x="15.9" y="2.6" width="1.1" height="2.8" rx=".4" fill="#fff"/>'+
+      '<rect x="23" y="2.6" width="1.1" height="2.8" rx=".4" fill="#fff"/>',
+    hair: // scissors
+      '<circle cx="17.9" cy="6.3" r="1.25" fill="none" stroke="#fff" stroke-width=".9"/>'+
+      '<circle cx="22.1" cy="6.3" r="1.25" fill="none" stroke="#fff" stroke-width=".9"/>'+
+      '<line x1="18.6" y1="5.3" x2="22.4" y2="1.2" stroke="#fff" stroke-width="1" stroke-linecap="round"/>'+
+      '<line x1="21.4" y1="5.3" x2="17.6" y2="1.2" stroke="#fff" stroke-width="1" stroke-linecap="round"/>',
+    tan: // sun
+      '<circle cx="20" cy="4" r="1.9" fill="#fff"/>'+
+      '<g stroke="#fff" stroke-width=".95" stroke-linecap="round">'+
+      '<line x1="20" y1="0.6" x2="20" y2="1.4"/><line x1="20" y1="6.6" x2="20" y2="7.4"/>'+
+      '<line x1="16.6" y1="4" x2="17.4" y2="4"/><line x1="22.6" y1="4" x2="23.4" y2="4"/>'+
+      '<line x1="17.6" y1="1.6" x2="18.2" y2="2.2"/><line x1="21.8" y1="5.8" x2="22.4" y2="6.4"/>'+
+      '<line x1="22.4" y1="1.6" x2="21.8" y2="2.2"/><line x1="18.2" y1="5.8" x2="17.6" y2="6.4"/></g>',
+    spa: // lotus
+      '<path d="M20 1.6 C21.7 3 21.7 5 20 6.6 C18.3 5 18.3 3 20 1.6Z" fill="#fff"/>'+
+      '<path d="M16.8 3.2 C18.7 3.5 19.6 5 19.4 6.6 C17.6 6.6 16.6 5.2 16.8 3.2Z" fill="#fff"/>'+
+      '<path d="M23.2 3.2 C21.3 3.5 20.4 5 20.6 6.6 C22.4 6.6 23.4 5.2 23.2 3.2Z" fill="#fff"/>',
+    chiro: // spine segments
+      '<rect x="18.5" y="0.9" width="3" height="1.4" rx=".6" fill="#fff"/>'+
+      '<rect x="18.2" y="3.3" width="3.6" height="1.4" rx=".6" fill="#fff"/>'+
+      '<rect x="18.5" y="5.7" width="3" height="1.4" rx=".6" fill="#fff"/>',
+    leaf: // wellness leaf
+      '<path d="M16.9 6.4 C16.4 2.6 19 1 23.2 1.2 C23.4 5.2 21.4 7.2 16.9 6.4Z" fill="#fff"/>'+
+      '<line x1="16.6" y1="7" x2="20.4" y2="3.6" stroke="#1b2338" stroke-width=".7" stroke-linecap="round"/>',
+    scale: // weight scale
+      '<rect x="16.6" y="1.4" width="6.8" height="5.4" rx="1.1" fill="#fff"/>'+
+      '<path d="M18.4 3.9 A1.6 1.6 0 0 1 21.6 3.9" fill="none" stroke="#1b2338" stroke-width=".8"/>'+
+      '<line x1="20" y1="3.9" x2="20.8" y2="2.9" stroke="#1b2338" stroke-width=".7" stroke-linecap="round"/>'
+  };
+  // Map a clinic Type to a badge key. Med Spa and the other types not listed get no badge.
+  var TYPE_BADGE = {
+    "Gym":"gym", "Hair / Nail Salon":"hair", "Tanning Salon":"tan", "Massage / Day Spa":"spa",
+    "Chiropractic":"chiro", "Wellness Center":"leaf", "Weight Loss Clinic":"scale"
+  };
+  var BADGE_LABELS = { gym:"Gym", hair:"Hair / nail salon", tan:"Tanning", spa:"Massage / day spa", chiro:"Chiropractic", leaf:"Wellness center", scale:"Weight loss" };
+  function pinSVG(s, size, badge){
     var svg = pinSVGBase(s, size);
-    if (!gym) return svg;
-    return svg.replace('<svg ', '<svg style="overflow:visible" ').replace('</svg>', GYM_BADGE+'</svg>');
+    if (badge === true) badge = "gym";
+    if (!badge || !BADGE_GLYPHS[badge]) return svg;
+    return svg.replace('<svg ', '<svg style="overflow:visible" ').replace('</svg>', BADGE_WRAP_OPEN+BADGE_GLYPHS[badge]+'</g></svg>');
   }
   function pinSVGBase(s, size){
     var c = s.color, sz = size || 26;
@@ -563,6 +628,7 @@ body{font-family:var(--body);color:var(--ink);}
   var lastLoadError = ""; // human-readable detail from the last failure, shown in the task list so reports carry real signal
 
   function $(id){ return document.getElementById(id); }
+  var contactsDetailByClinicId = {}; // clinic record id -> [{name, role, phone, email, notes}], filled once Contacts loads
 
   // The map background tile source. MapTiler's free tiles, keyed to the browser-stored key,
   // since OpenStreetMap's own free tile servers block apps that hit them repeatedly.
@@ -652,6 +718,7 @@ body{font-family:var(--body);color:var(--ink);}
     };
     $("sheetBackdrop").onclick = closeSheet;
     $("sheetClose").onclick = closeSheet;
+    $("briefClose").onclick = closeBrief;
     $("locateBtn").onclick = toggleLocate;
     $("fitAllBtn").onclick = fitAll;
     wireRoute();
@@ -770,9 +837,12 @@ body{font-family:var(--body);color:var(--ink);}
       phone:f[F.phone], website:f[F.website], notes:f[F.notes],
       nextAction:f[F.nextAction], lastContact:f[F.lastContact],
       activityLog:f[F.activityLog],
+      profile:f[F.profile], email:f[F.email], nextMeeting:f[F.nextMeeting],
+      bSnap:f[F.bSnap], bFit:f[F.bFit], bPresc:f[F.bPresc], bBridge:f[F.bBridge], bKnow:f[F.bKnow],
       type: (f[F.type] && f[F.type].name) || (typeof f[F.type]==="string" ? f[F.type] : null),
       // Gym badge shows if either the Gym checkbox is ticked or Type is set to Gym.
       gym: !!f[F.gym] || ((f[F.type] && f[F.type].name) || f[F.type]) === "Gym",
+      badge: (f[F.gym] ? "gym" : (TYPE_BADGE[(f[F.type] && f[F.type].name) || f[F.type]] || "")),
       contactNames:((contactsByClinicId||{})[rec.id]||[]).join(", ")
     };
   }
@@ -829,7 +899,7 @@ body{font-family:var(--body);color:var(--ink);}
     // A hiccup on Contacts alone shouldn't block the checklist from ever loading either —
     // isolate it the same way Tasks is isolated above, and just fall back to no contact names.
     var contactsPromise = tasksPromise.catch(function(){ return null; }).then(function(){
-      return fetchAll(CONTACTS_TABLE, [CF.name, CF.clinic]);
+      return fetchAll(CONTACTS_TABLE, Object.values(CF));
     }).catch(function(err){
       console.error("Contacts table load failed:", err);
       if (err && err.authError) throw err;
@@ -881,11 +951,15 @@ body{font-family:var(--body);color:var(--ink);}
       var clinics = res[0], contacts = res[1];
       if (!contacts.length) return;
       var contactsByClinicId = {};
+      contactsDetailByClinicId = {};
       contacts.forEach(function(rec){
         var f=rec.fields, linked=f[CF.clinic]||[];
         var nm=f[CF.name]||"Unnamed";
+        var det = { name:nm, role:(f[CF.role] && f[CF.role].name) || (typeof f[CF.role]==="string" ? f[CF.role] : ""),
+                    phone:f[CF.phone]||"", email:f[CF.email]||"", notes:f[CF.notes]||"" };
         (Array.isArray(linked)?linked:[]).forEach(function(cid){
           (contactsByClinicId[cid]=contactsByClinicId[cid]||[]).push(nm);
+          (contactsDetailByClinicId[cid]=contactsDetailByClinicId[cid]||[]).push(det);
         });
       });
       allClinicsById = {};
@@ -932,7 +1006,7 @@ body{font-family:var(--body);color:var(--ink);}
       var s = stageColor[c.stage];
       var icon = L.divIcon({
         className:"pin",
-        html: pinSVG(s, s.shape==="star" ? 30 : 26, c.gym),
+        html: pinSVG(s, s.shape==="star" ? 30 : 26, c.badge),
         iconSize:[28,28], iconAnchor:[14,14]
       });
       var m = L.marker([c.lat,c.lng], {icon:icon});
@@ -955,6 +1029,73 @@ body{font-family:var(--body);color:var(--ink);}
   }
 
   // ---- Bottom sheet ----
+
+  // ---- Full brief ----
+  // A scrollable screen with the pre-visit read on one clinic. Players come live from the Contacts
+  // table; the five written sections come from the "Brief:" fields on the clinic. If none of those
+  // are filled in yet, the older Company Profile text stands in under Company Snapshot.
+  var ROLE_ORDER = { "Decision-Maker":0, "Decision Maker":0, "Champion":1, "Gatekeeper":2, "Unclear":3 };
+  var ROLE_COLORS = { "Decision-Maker":{bg:"#b0eeb0",fg:"#1a7a2e"}, "Decision Maker":{bg:"#b0eeb0",fg:"#1a7a2e"},
+                      "Champion":{bg:"#fff3c4",fg:"#7a5b00"}, "Gatekeeper":{bg:"#ffc2cc",fg:"#8a1f30"}, "Unclear":{bg:"#e3edff",fg:"#1f4f9e"} };
+  function briefSection(title, bodyHtml){
+    return '<section class="brief-sec"><h3>'+title+'</h3>'+bodyHtml+'</section>';
+  }
+  function briefText(t){ return '<div class="brief-text">'+esc(t)+'</div>'; }
+  function briefPlayers(clinicId){
+    var list = (contactsDetailByClinicId[clinicId]||[]).slice();
+    if (!list.length) return "";
+    list.sort(function(a,b){
+      var ra = ROLE_ORDER[a.role]; if (ra===undefined) ra = 4;
+      var rb = ROLE_ORDER[b.role]; if (rb===undefined) rb = 4;
+      return ra-rb || a.name.localeCompare(b.name);
+    });
+    return list.map(function(p){
+      var h = '<div class="player"><div class="player-top"><span class="player-name">'+esc(p.name)+'</span>';
+      if (p.role) h += pill(p.role, ROLE_COLORS);
+      h += '</div>';
+      var links = [];
+      if (p.phone) links.push('<a href="tel:'+esc(String(p.phone).replace(/[^0-9+]/g,""))+'">'+esc(p.phone)+'</a>');
+      if (p.email) links.push('<a href="mailto:'+esc(p.email)+'">'+esc(p.email)+'</a>');
+      if (links.length) h += '<div class="player-links">'+links.join('')+'</div>';
+      if (p.notes) h += '<div class="player-notes">'+esc(p.notes)+'</div>';
+      return h + '</div>';
+    }).join("");
+  }
+  function openBrief(c){
+    var s = stageColor[c.stage] || {color:"#8a8a8a"};
+    var head = '<div class="sheet-stage" style="background:'+s.color+'">'+(c.stage||"Unknown")+'</div>';
+    if (c.fit) head += '<span class="sheet-fit">'+esc(c.fit)+'</span>';
+    if (c.interest) head += pill(c.interest, INTEREST_COLORS);
+    (c.owner||[]).forEach(function(o){ head += pill(o, OWNER_COLORS); });
+    var html = head;
+    if (c.nextAction) html += '<div class="sheet-next"><div class="lbl">Next Step</div><div class="val">'+esc(c.nextAction)+'</div></div>';
+    var meta = [];
+    if (c.address) meta.push(row("Address", esc(c.address)));
+    if (c.lastContact) meta.push(row("Last Contact", esc(c.lastContact)));
+    if (c.nextMeeting) {
+      var d = new Date(c.nextMeeting);
+      meta.push(row("Meeting", esc(isNaN(d.getTime()) ? c.nextMeeting : d.toLocaleString([], {weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}))));
+    }
+    html += meta.join("");
+
+    var anyBrief = c.bSnap || c.bFit || c.bPresc || c.bBridge || c.bKnow;
+    var snap = c.bSnap || (!anyBrief ? c.profile : "");
+    if (snap) html += briefSection("Company Snapshot", briefText(snap));
+    var players = briefPlayers(c.id);
+    if (players) html += briefSection("Players", players);
+    if (c.bFit) html += briefSection("Fit", (c.fit ? '<div class="brief-fit">'+esc(c.fit)+'</div>' : '') + briefText(c.bFit));
+    if (c.bPresc) html += briefSection("Prescriber Signal", briefText(c.bPresc));
+    if (c.bBridge) html += briefSection("Bridge", briefText(c.bBridge));
+    if (c.bKnow) html += briefSection("Worth Knowing", briefText(c.bKnow));
+    if (!anyBrief) html += '<div class="brief-note">The written brief has not been added for this clinic yet. Showing what is on file.</div>';
+    if (!snap && !players && !anyBrief) html = head + '<div class="brief-note">Nothing on file for this clinic yet.</div>';
+
+    $("briefTitle").textContent = c.name;
+    $("briefBody").innerHTML = html;
+    $("briefBody").scrollTop = 0;
+    $("briefScreen").classList.add("show");
+  }
+  function closeBrief(){ $("briefScreen").classList.remove("show"); }
   function openSheet(c){
     var s = stageColor[c.stage] || {color:"#8a8a8a"};
     var mapsQ = encodeURIComponent(c.address || (c.lat+","+c.lng));
@@ -976,17 +1117,20 @@ body{font-family:var(--body);color:var(--ink);}
     html += '<a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination='+mapsQ+'">Directions</a>';
     if (c.phone) html += '<a href="tel:'+esc(c.phone.replace(/[^0-9+]/g,""))+'">Call</a>';
     html += '</div>';
-    // Opened from the Locations list: add a "Show on map" button, and lift the sheet above the list screen.
+    // Second row: Full brief always, plus "Show on map" when opened from the Locations list (which also lifts the sheet above that screen).
     var fromList = $("listScreen").classList.contains("show");
+    html += '<div class="sheet-actions second"><button id="sheetBrief" class="brief-btn">Full brief</button>';
     if (fromList && typeof c.lat==="number" && typeof c.lng==="number"){
-      html += '<div class="sheet-actions second"><button id="sheetShowOnMap">Show on map</button></div>';
+      html += '<button id="sheetShowOnMap">Show on map</button>';
     }
+    html += '</div>';
     $("sheetBody").innerHTML = html;
     $("sheet").classList.toggle("over", fromList);
     $("sheetBackdrop").classList.toggle("over", fromList);
     $("sheet").scrollTop = 0;
     $("sheet").classList.add("show");
     $("sheetBackdrop").classList.add("show");
+    $("sheetBrief").onclick = function(){ openBrief(c); };
     var showBtn = $("sheetShowOnMap");
     if (showBtn) showBtn.onclick = function(){ closeListScreen(); focusOnClinic(c); };
   }
@@ -1059,7 +1203,7 @@ body{font-family:var(--body);color:var(--ink);}
     routeMarkers = {};
     allRecords.forEach(function(c){
       var s = stageColor[c.stage] || {color:"#8a8a8a", shape:"circle"};
-      var icon = L.divIcon({ className:"pin", html:pinSVG(s, 24, c.gym), iconSize:[26,26], iconAnchor:[13,13] });
+      var icon = L.divIcon({ className:"pin", html:pinSVG(s, 24, c.badge), iconSize:[26,26], iconAnchor:[13,13] });
       var m = L.marker([c.lat,c.lng], {icon:icon});
       m.on("click", function(){ toggleStopFromClinic(c); });
       m.addTo(routeMarkersLayer);
@@ -1652,7 +1796,7 @@ body{font-family:var(--body);color:var(--ink);}
     hits.slice(0, 8).forEach(function(c){
       var d = document.createElement("div");
       d.className = "sr-item";
-      d.innerHTML = '<div class="sr-pin">'+pinSVG(stageOf(c), 22, c.gym)+'</div>'+
+      d.innerHTML = '<div class="sr-pin">'+pinSVG(stageOf(c), 22, c.badge)+'</div>'+
         '<div><div class="sr-name">'+esc(c.name)+'</div><div class="sr-sub">'+esc((c.stage||"Unknown")+(c.address ? " · "+c.address : ""))+'</div></div>';
       d.onclick = function(){ closeSearch(); focusOnClinic(c); };
       box.appendChild(d);
@@ -1677,7 +1821,7 @@ body{font-family:var(--body);color:var(--ink);}
   var STAGE_ORDER = STAGES.map(function(s){ return s.name; });
   var FIT_OPTIONS = ["White Label","B2B","Both","Unclear","Not set"];
   var INTEREST_OPTIONS = ["High","Medium","Low","Unclear","Not set"];
-  var TYPE_OPTIONS = ["Med Spa","Medical Clinic","Longevity / Hormone","Aesthetics / Skin","Chiropractic","IV / Hydration","Wellness Center","Gym","Other","Not set"];
+  var TYPE_OPTIONS = ["Med Spa","Medical Clinic","Longevity / Hormone","Aesthetics / Skin","Chiropractic","IV / Hydration","Wellness Center","Hair / Nail Salon","Tanning Salon","Massage / Day Spa","Weight Loss Clinic","Gym","Other","Not set"];
   var OWNER_OPTIONS = ["Kelley","Jennette","Casey","Unassigned"];
   var listState = null;
   function resetListState(){
@@ -1774,7 +1918,7 @@ body{font-family:var(--body);color:var(--ink);}
     if (r.overdue) side += '<span class="pill" style="background:#ffc2cc;color:#8a1f30;">'+r.overdue+' overdue</span>';
     else if (r.open) side += '<span class="pill" style="background:#fff3c4;color:#7a5b00;">'+r.open+' open</span>';
     d.innerHTML =
-      '<div class="loc-pin">'+pinSVG(stageOf(c), 24, c.gym)+'</div>'+
+      '<div class="loc-pin">'+pinSVG(stageOf(c), 24, c.badge)+'</div>'+
       '<div class="loc-main"><div class="loc-name">'+esc(c.name)+'</div>'+
         '<div class="loc-sub">'+esc((c.stage||"Unknown")+(c.address ? " · "+c.address : ""))+'</div>'+
         (tags ? '<div class="loc-tags">'+tags+'</div>' : '')+'</div>'+
