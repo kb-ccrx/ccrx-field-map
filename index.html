@@ -377,7 +377,7 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-24 claimed stage</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-24 signed star</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -501,7 +501,7 @@ body{font-family:var(--body);color:var(--ink);}
     {name:"Meeting Scheduled", color:"#2e9e8f", shape:"square"},
     {name:"Met/Evaluating", color:"#8657c9", shape:"square"},
     {name:"Closing", color:"#4c9a5b", shape:"diamond"},
-    {name:"Signed", color:"#c9a227", shape:"star"},
+    {name:"Signed", color:"#f5b400", shape:"star"},
     {name:"Parked", color:"#b0413e", shape:"pause"},
     {name:"Claimed", color:"#4f6d9a", shape:"flag"},
     {name:"Not Pursuing", color:"#c97a3d", shape:"triangle"},
@@ -589,7 +589,8 @@ body{font-family:var(--body);color:var(--ink);}
       case "diamond": // Closing — deal in motion
         return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><polygon points="12,2 22,12 12,22 2,12" fill="'+c+'" stroke="#fff" stroke-width="2"/></svg>';
       case "star": // Signed — won
-        return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><polygon points="12,1 15,9 23,9 16.5,14 19,22 12,17 5,22 7.5,14 1,9 9,9" fill="'+c+'" stroke="#fff" stroke-width="1.2"/></svg>';
+        var sp = "12,1 15,9 23,9 16.5,14 19,22 12,17 5,22 7.5,14 1,9 9,9";
+        return '<svg width="'+sz+'" height="'+sz+'" viewBox="-2 -2 28 28"><polygon points="'+sp+'" fill="#fff" stroke="#fff" stroke-width="3.6" stroke-linejoin="round"/><polygon points="'+sp+'" fill="'+c+'" stroke="#1b2a4a" stroke-width="1.6" stroke-linejoin="round"/></svg>';
       case "pause": // Parked — on hold
         return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="'+c+'" stroke="#fff" stroke-width="2.2"/><rect x="8.3" y="7.4" width="2.6" height="9.2" rx="1" fill="#fff"/><rect x="13.1" y="7.4" width="2.6" height="9.2" rx="1" fill="#fff"/></svg>';
       case "flag": // Claimed — another CCRX rep owns this one
@@ -1009,8 +1010,8 @@ body{font-family:var(--body);color:var(--ink);}
       var s = stageColor[c.stage];
       var icon = L.divIcon({
         className:"pin",
-        html: pinSVG(s, s.shape==="star" ? 30 : 26, c.badge),
-        iconSize:[28,28], iconAnchor:[14,14]
+        html: pinSVG(s, s.shape==="star" ? 44 : 26, c.badge),
+        iconSize: s.shape==="star" ? [44,44] : [28,28], iconAnchor: s.shape==="star" ? [22,22] : [14,14]
       });
       var m = L.marker([c.lat,c.lng], {icon:icon});
       m.on("click", function(){ openSheet(c); });
