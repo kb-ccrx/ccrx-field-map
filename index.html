@@ -377,7 +377,7 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-24 signed star</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-26 hours</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -486,7 +486,8 @@ body{font-family:var(--body);color:var(--ink);}
     activityLog:"fld2iM255ldam2YmP",
     profile:"fldPgzy6O2gq7zdCV", email:"fldqo1WXzP1YSZTm0", nextMeeting:"fld1eHqCpMUeqUlQG",
     bSnap:"fldJuBm06RYjCQmrc", bFit:"fldgC8npbKOiA8NaA", bPresc:"fldET6l3SntUcxQ6R",
-    bBridge:"fldZpL1fypkFqFicE", bKnow:"fld21l33eHEl4PnGK"
+    bBridge:"fldZpL1fypkFqFicE", bKnow:"fld21l33eHEl4PnGK",
+    hours:"fld9zvYOeTLDi9OQx", hoursChecked:"fldr1K50o16d2Olid"
   };
   var CF = { name:"fld5SWDkRHf3epyYD", clinic:"fldInKK6h0cRnOAC7", role:"fldptYg8yoGdrzP58", phone:"fldc49tNM7ZgGUBew", email:"fldosuZJj2OyAOsDa", notes:"fldYuTso9QliGstdW" }; // Contacts field IDs
   var TF = { // Tasks field IDs
@@ -844,6 +845,7 @@ body{font-family:var(--body);color:var(--ink);}
       activityLog:f[F.activityLog],
       profile:f[F.profile], email:f[F.email], nextMeeting:f[F.nextMeeting],
       bSnap:f[F.bSnap], bFit:f[F.bFit], bPresc:f[F.bPresc], bBridge:f[F.bBridge], bKnow:f[F.bKnow],
+      hours:f[F.hours], hoursChecked:f[F.hoursChecked],
       type: (f[F.type] && f[F.type].name) || (typeof f[F.type]==="string" ? f[F.type] : null),
       // Gym badge shows if either the Gym checkbox is ticked or Type is set to Gym.
       gym: !!f[F.gym] || ((f[F.type] && f[F.type].name) || f[F.type]) === "Gym",
@@ -1011,8 +1013,8 @@ body{font-family:var(--body);color:var(--ink);}
       var s = stageColor[c.stage];
       var icon = L.divIcon({
         className:"pin",
-        html: pinSVG(s, s.shape==="star" ? 44 : 26, c.badge),
-        iconSize: s.shape==="star" ? [38,38] : [28,28], iconAnchor: s.shape==="star" ? [19,19] : [14,14]
+        html: pinSVG(s, s.shape==="star" ? 40 : 26, c.badge),
+        iconSize: s.shape==="star" ? [40,40] : [28,28], iconAnchor: s.shape==="star" ? [20,20] : [14,14]
       });
       var m = L.marker([c.lat,c.lng], {icon:icon});
       m.on("click", function(){ openSheet(c); });
@@ -1066,6 +1068,82 @@ body{font-family:var(--body);color:var(--ink);}
       return h + '</div>';
     }).join("");
   }
+
+  // ---- Hours of operation ----
+  // Hours field format, one line per day: "Mon 9:00-17:00", "Mon 9:00-12:00, 13:00-17:00", or "Wed closed".
+  var DAY_KEYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  function parseHours(text){
+    var out = {};
+    String(text||"").split(/\r?\n/).forEach(function(line){
+      var m = line.trim().match(/^(Sun|Mon|Tue|Wed|Thu|Fri|Sat)[a-z]*\s*:?\s*(.+)$/i);
+      if (!m) return;
+      var day = m[1].charAt(0).toUpperCase()+m[1].slice(1,3).toLowerCase();
+      var rest = m[2].trim();
+      if (/^closed/i.test(rest)) { out[day] = []; return; }
+      var ranges = [];
+      rest.split(",").forEach(function(part){
+        var r = part.trim().match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+        if (r) ranges.push([parseInt(r[1],10)*60+parseInt(r[2],10), parseInt(r[3],10)*60+parseInt(r[4],10)]);
+      });
+      if (ranges.length) out[day] = ranges;
+    });
+    return out;
+  }
+  function fmtMin(mins){
+    if (mins >= 1440) mins = 1439;
+    var hh = Math.floor(mins/60), mm = mins%60, ap = hh>=12 ? "PM" : "AM";
+    var h12 = hh%12; if (h12===0) h12 = 12;
+    return h12 + (mm ? ":"+(mm<10?"0":"")+mm : "") + " " + ap;
+  }
+  function fmtRanges(ranges){
+    if (!ranges || !ranges.length) return "Closed";
+    if (ranges.length===1 && ranges[0][0]===0 && ranges[0][1]>=1440) return "Open 24 hours";
+    return ranges.map(function(r){ return fmtMin(r[0])+" to "+fmtMin(r[1]); }).join(", ");
+  }
+  function hoursHtml(c){
+    var wrap = function(inner){ return row("Hours", inner); };
+    var parsed = parseHours(c.hours);
+    if (!c.hours || !Object.keys(parsed).length){
+      return wrap('<span style="color:#8a8a8a;">Hours not on file. Check Google Maps before you go.</span>');
+    }
+    var now = new Date(), dayKey = DAY_KEYS[now.getDay()], mins = now.getHours()*60+now.getMinutes();
+    var today = parsed[dayKey];
+    var badge, bg, fg;
+    if (!today){
+      badge = "Hours not listed for today"; bg="#eeeeee"; fg="#4a4a4a";
+    } else if (!today.length){
+      badge = "Closed today"; bg="#ffc2cc"; fg="#8a1f30";
+    } else if (today.length===1 && today[0][0]===0 && today[0][1]>=1440){
+      badge = "Open 24 hours"; bg="#b0eeb0"; fg="#1a7a2e";
+    } else {
+      var openRange = null, nextStart = null;
+      today.forEach(function(r){
+        if (mins>=r[0] && mins<r[1]) openRange = r;
+        else if (mins<r[0] && (nextStart===null || r[0]<nextStart)) nextStart = r[0];
+      });
+      if (openRange){
+        var left = openRange[1]-mins;
+        if (left<=60){ badge = "Closing soon, closes "+fmtMin(openRange[1]); bg="#ffe994"; fg="#7a5b00"; }
+        else { badge = "Open now, closes "+fmtMin(openRange[1]); bg="#b0eeb0"; fg="#1a7a2e"; }
+      } else if (nextStart!==null){
+        badge = "Closed now, opens "+fmtMin(nextStart); bg="#ffe994"; fg="#7a5b00";
+      } else {
+        badge = "Closed for the day"; bg="#ffc2cc"; fg="#8a1f30";
+      }
+    }
+    var week = DAY_KEYS.slice(1).concat(DAY_KEYS[0]).map(function(d){
+      var r = parsed[d];
+      var t = r===undefined ? '<span style="color:#8a8a8a;">not listed</span>' : esc(fmtRanges(r));
+      var bold = d===dayKey ? ' style="font-weight:700;"' : '';
+      return '<div'+bold+'>'+d+': '+t+'</div>';
+    }).join("");
+    var hc = String(c.hoursChecked||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    var checked = c.hoursChecked ? 'Checked '+esc(hc ? parseInt(hc[2],10)+"/"+parseInt(hc[3],10)+"/"+hc[1].slice(2) : c.hoursChecked) : 'Not yet verified, confirm before you go';
+    return wrap('<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-weight:600;background:'+bg+';color:'+fg+';">'+esc(badge)+'</span>'+
+      '<details style="margin-top:4px;"><summary style="cursor:pointer;color:#4a4a4a;">All hours</summary><div style="margin-top:4px;line-height:1.5;">'+week+'</div></details>'+
+      '<div style="color:#8a8a8a;font-size:11px;margin-top:2px;">'+checked+'</div>');
+  }
+
   function openBrief(c){
     var s = stageColor[c.stage] || {color:"#8a8a8a"};
     var head = '<div class="sheet-stage" style="background:'+s.color+'">'+(c.stage||"Unknown")+'</div>';
@@ -1076,6 +1154,7 @@ body{font-family:var(--body);color:var(--ink);}
     if (c.nextAction) html += '<div class="sheet-next"><div class="lbl">Next Step</div><div class="val">'+esc(c.nextAction)+'</div></div>';
     var meta = [];
     if (c.address) meta.push(row("Address", esc(c.address)));
+    meta.push(hoursHtml(c));
     if (c.lastContact) meta.push(row("Last Contact", esc(c.lastContact)));
     if (c.nextMeeting) {
       var d = new Date(c.nextMeeting);
@@ -1112,6 +1191,7 @@ body{font-family:var(--body);color:var(--ink);}
     html += '<h2><a class="sheet-name-link" target="_blank" rel="noopener" href="'+airtableRecordUrl(c.id)+'">'+esc(c.name)+' <span class="sheet-open-icon">↗</span></a></h2>';
     if (c.nextAction) html += '<div class="sheet-next"><div class="lbl">Next Step</div><div class="val">'+esc(c.nextAction)+'</div></div>';
     if (c.address) html += row("Address", esc(c.address));
+    html += hoursHtml(c);
     if (c.website) html += row("Website", '<a href="'+esc(normalizeUrl(c.website))+'" target="_blank" rel="noopener">'+esc(c.website)+'</a>');
     if (c.contactNames) html += row("Contacts", esc(c.contactNames));
     if (c.qualified) html += row("Qualified", pill(c.qualified, QUALIFIED_COLORS));
