@@ -72,7 +72,7 @@ body{font-family:var(--body);color:var(--ink);}
   background:linear-gradient(to bottom, rgba(0,0,0,.35), rgba(0,0,0,0));pointer-events:none;}
 #titlewrap{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;pointer-events:auto;}
 #titlewrap h1{font-family:var(--display);font-size:17px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.5);}
-#refreshBtn,#infoBtn,#searchBtn,#listBtn{width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:var(--navy);
+#refreshBtn,#infoBtn,#searchBtn,#listBtn,#filterBtn{width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.92);color:var(--navy);
   font-size:16px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);cursor:pointer;margin-left:8px;}
 #chips{display:flex;gap:6px;overflow-x:auto;pointer-events:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px;}
 #chips::-webkit-scrollbar{display:none;}
@@ -82,6 +82,22 @@ body{font-family:var(--body);color:var(--ink);}
 .chip .dot svg{filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));}
 .chip.off{opacity:.4;}
 .chip.all{background:var(--navy);color:#fff;}
+#filterBtn{position:relative;}
+#filterBtn .fdot{position:absolute;top:3px;right:3px;width:9px;height:9px;border-radius:50%;background:#d6336c;border:2px solid #fff;display:none;}
+#filterBtn.on .fdot{display:block;}
+#typeBackdrop{position:fixed;inset:0;z-index:1250;display:none;}
+#typeBackdrop.show{display:block;}
+#typePanel{position:fixed;right:12px;top:calc(env(safe-area-inset-top,0px) + 56px);width:min(320px,calc(100vw - 24px));max-height:65vh;overflow-y:auto;
+  z-index:1260;background:var(--surface);color:var(--ink);border-radius:16px;box-shadow:var(--shadow);padding:14px;display:none;}
+#typePanel.show{display:block;}
+#typePanel .tp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+#typePanel .tp-head b{font-family:var(--display);font-size:15px;color:var(--navy);}
+#typePanel .tp-all{border:none;background:none;color:var(--navy);font-weight:700;font-size:12.5px;cursor:pointer;padding:4px 2px;}
+#typeList{display:flex;flex-wrap:wrap;gap:6px;}
+#typeList .chip{font-size:12px;padding:6px 10px;border-color:var(--line);background:var(--surface-2);color:var(--ink);}
+#typeList .chip.off{opacity:.45;}
+#typeList .chip .tdot{width:10px;height:10px;border-radius:50%;flex:0 0 auto;border:1px solid rgba(0,0,0,.25);}
+#typePanel .tp-note{font-size:11.5px;color:var(--ink-dim);margin-top:10px;line-height:1.4;}
 
 /* ---- Floating controls ---- */
 #controls{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:1000;display:flex;flex-direction:column;gap:10px;}
@@ -334,11 +350,19 @@ body{font-family:var(--body);color:var(--ink);}
     <div style="display:flex;pointer-events:auto;">
       <button id="searchBtn" title="Search locations" aria-label="Search locations"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button>
       <button id="listBtn" title="All locations (list)" aria-label="All locations (list)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 6h12M9 12h12M9 18h12"/><circle cx="3.8" cy="6" r="1.2" fill="currentColor"/><circle cx="3.8" cy="12" r="1.2" fill="currentColor"/><circle cx="3.8" cy="18" r="1.2" fill="currentColor"/></svg></button>
+      <button id="filterBtn" title="Filter by type" aria-label="Filter by type"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg><span class="fdot"></span></button>
       <button id="refreshBtn" title="Refresh">&#8635;</button>
       <button id="infoBtn" title="Info">i</button>
     </div>
   </div>
   <div id="chips"></div>
+</div>
+
+<div id="typeBackdrop"></div>
+<div id="typePanel">
+  <div class="tp-head"><b>Filter by type</b><button class="tp-all" id="typeAllBtn">All types</button></div>
+  <div id="typeList"></div>
+  <div class="tp-note">Tap one type to see only that type. Tap more to add them. Stage filters still apply.</div>
 </div>
 
 <div id="searchPanel">
@@ -377,7 +401,7 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-26 hours</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-27 type filter button</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -617,6 +641,11 @@ body{font-family:var(--body);color:var(--ink);}
   var activeStages = new Set(STAGES.filter(function(s){ return !DEFAULT_OFF_STAGES[s.name]; }).map(function(s){return s.name;}));
   var allRecords = [];
   var markersByStage = {};
+  // Type filter: a second row of chips. Everything is on at launch. Tapping a type while all are on
+  // shows only that type; after that, taps add or remove types. Tapping "All types" resets.
+  var TYPE_FILTERS = ["Med Spa","Medical Clinic","Longevity / Hormone","Aesthetics / Skin","Chiropractic","IV / Hydration","Wellness Center","Hair / Nail Salon","Tanning Salon","Massage / Day Spa","Weight Loss Clinic","Gym","Other","Not set"];
+  var activeTypes = new Set(TYPE_FILTERS);
+  function typeKey(t){ return (t && TYPE_FILTERS.indexOf(t)>=0 && t!=="Not set") ? t : (t ? "Other" : "Not set"); }
   var hasFitOnce = false;
 
   // ---- Follow-up checklist state ----
@@ -710,6 +739,7 @@ body{font-family:var(--body);color:var(--ink);}
     map.addLayer(cluster);
 
     buildChips();
+    buildTypeChips();
     $("refreshBtn").onclick = function(){ loadData(true); };
     $("infoBtn").onclick = function(){ $("infoModal").classList.add("show"); };
     $("infoClose").onclick = function(){ $("infoModal").classList.remove("show"); };
@@ -754,6 +784,35 @@ body{font-family:var(--body);color:var(--ink);}
     });
   }
 
+  function buildTypeChips(){
+    var wrap = $("typeList"); wrap.innerHTML = "";
+    TYPE_FILTERS.forEach(function(t){
+      var col = (t==="Not set") ? {bg:"#ffffff",fg:"#4a4a4a"} : (TYPE_COLORS[t] || TYPE_COLORS.Other);
+      var c = document.createElement("div");
+      c.className = "chip"; c.dataset.type = t;
+      c.innerHTML = '<span class="tdot" style="background:'+col.bg+';"></span>'+esc(t==="Not set" ? "No type" : t);
+      c.onclick = function(){
+        if (activeTypes.size === TYPE_FILTERS.length) activeTypes = new Set([t]);
+        else if (activeTypes.has(t)) { activeTypes.delete(t); if (!activeTypes.size) activeTypes = new Set(TYPE_FILTERS); }
+        else activeTypes.add(t);
+        renderTypeChipState(); applyFilter();
+      };
+      wrap.appendChild(c);
+    });
+    $("typeAllBtn").onclick = function(){ activeTypes = new Set(TYPE_FILTERS); renderTypeChipState(); applyFilter(); };
+    $("filterBtn").onclick = function(){
+      var open = !$("typePanel").classList.contains("show");
+      $("typePanel").classList.toggle("show", open); $("typeBackdrop").classList.toggle("show", open);
+    };
+    $("typeBackdrop").onclick = function(){ $("typePanel").classList.remove("show"); $("typeBackdrop").classList.remove("show"); };
+    renderTypeChipState();
+  }
+  function renderTypeChipState(){
+    Array.prototype.forEach.call(document.querySelectorAll("#typeList .chip[data-type]"), function(c){
+      c.classList.toggle("off", !activeTypes.has(c.dataset.type));
+    });
+    $("filterBtn").classList.toggle("on", activeTypes.size < TYPE_FILTERS.length);
+  }
   function buildChips(){
     var wrap = $("chips"); wrap.innerHTML="";
     var allChip = document.createElement("div");
@@ -1019,6 +1078,7 @@ body{font-family:var(--body);color:var(--ink);}
       var m = L.marker([c.lat,c.lng], {icon:icon});
       m.on("click", function(){ openSheet(c); });
       m._stage = c.stage;
+      m._type = typeKey(c.type);
       (markersByStage[c.stage]=markersByStage[c.stage]||[]).push(m);
     });
     applyFilter();
@@ -1031,7 +1091,8 @@ body{font-family:var(--body);color:var(--ink);}
   function applyFilter(){
     cluster.clearLayers();
     Object.keys(markersByStage).forEach(function(stage){
-      if (activeStages.has(stage)) cluster.addLayers(markersByStage[stage]);
+      if (!activeStages.has(stage)) return;
+      cluster.addLayers(markersByStage[stage].filter(function(m){ return activeTypes.has(m._type); }));
     });
   }
 
