@@ -119,6 +119,8 @@ body{font-family:var(--body);color:var(--ink);}
   background:var(--surface-2);color:var(--ink-dim);font-size:18px;line-height:1;cursor:pointer;
   display:flex;align-items:center;justify-content:center;z-index:1;}
 #sheetBody{padding-right:30px;}
+.dealpill{display:inline-block;margin-left:6px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;color:#fff;border:1.5px solid #1b2a4a;vertical-align:middle;}
+.dealpill[style*="#f5b400"]{color:#1b2a4a;}
 .sheet-stage{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
   padding:5px 10px;border-radius:999px;margin-bottom:10px;color:#fff;}
 .sheet-fit{display:inline-block;font-size:11px;font-weight:600;color:var(--ink-dim);border:1px solid var(--line);
@@ -401,7 +403,7 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-27 type filter button</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-28 smaller deal stars</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -511,7 +513,8 @@ body{font-family:var(--body);color:var(--ink);}
     profile:"fldPgzy6O2gq7zdCV", email:"fldqo1WXzP1YSZTm0", nextMeeting:"fld1eHqCpMUeqUlQG",
     bSnap:"fldJuBm06RYjCQmrc", bFit:"fldgC8npbKOiA8NaA", bPresc:"fldET6l3SntUcxQ6R",
     bBridge:"fldZpL1fypkFqFicE", bKnow:"fld21l33eHEl4PnGK",
-    hours:"fld9zvYOeTLDi9OQx", hoursChecked:"fldr1K50o16d2Olid"
+    hours:"fld9zvYOeTLDi9OQx", hoursChecked:"fldr1K50o16d2Olid",
+    dealType:"fldFVatwzw5A7hRhO"
   };
   var CF = { name:"fld5SWDkRHf3epyYD", clinic:"fldInKK6h0cRnOAC7", role:"fldptYg8yoGdrzP58", phone:"fldc49tNM7ZgGUBew", email:"fldosuZJj2OyAOsDa", notes:"fldYuTso9QliGstdW" }; // Contacts field IDs
   var TF = { // Tasks field IDs
@@ -595,13 +598,53 @@ body{font-family:var(--body);color:var(--ink);}
     "Chiropractic":"chiro", "Wellness Center":"leaf", "Weight Loss Clinic":"scale"
   };
   var BADGE_LABELS = { gym:"Gym", hair:"Hair / nail salon", tan:"Tanning", spa:"Massage / day spa", chiro:"Chiropractic", leaf:"Wellness center", scale:"Weight loss" };
-  function pinSVG(s, size, badge){
-    var svg = pinSVGBase(s, size);
+  function pinSVG(s, size, badge, deals){
+    var svg = pinSVGBase(s, size, deals);
     if (badge === true) badge = "gym";
     if (!badge || !BADGE_GLYPHS[badge]) return svg;
     return svg.replace('<svg ', '<svg style="overflow:visible" ').replace('</svg>', BADGE_WRAP_OPEN+BADGE_GLYPHS[badge]+'</g></svg>');
   }
-  function pinSVGBase(s, size){
+  var DEAL_STYLES = {
+    "B2B/Prescriber": {color:"#0f9d8a", letter:"B"},
+    "WL - Peptides":  {color:"#f5b400", letter:"W"},
+    "WL - Valdura":   {color:"#7e57c2", letter:"V"}
+  };
+  var DEAL_ORDER = ["B2B/Prescriber","WL - Peptides","WL - Valdura"];
+  var starSeq = 0;
+  function dealPills(c){
+    if (c.stage !== "Signed" || !c.deals || !c.deals.length) return "";
+    return DEAL_ORDER.filter(function(d){ return c.deals.indexOf(d) >= 0; }).map(function(d){
+      return '<span class="dealpill" style="background:'+DEAL_STYLES[d].color+'">'+esc(d)+'</span>';
+    }).join("");
+  }
+  function starSVG(sz, fallback, deals){
+    var sp = "12,1 15,9 23,9 16.5,14 19,22 12,17 5,22 7.5,14 1,9 9,9";
+    var ds = DEAL_ORDER.filter(function(d){ return (deals||[]).indexOf(d) >= 0; });
+    var open = '<svg width="'+sz+'" height="'+sz+'" viewBox="-2 -2 28 28">';
+    var base = '<polygon points="'+sp+'" fill="#fff" stroke="#fff" stroke-width="3.6" stroke-linejoin="round"/>';
+    var outline = '<polygon points="'+sp+'" fill="none" stroke="#1b2a4a" stroke-width="1.6" stroke-linejoin="round"/>';
+    if (!ds.length) { // no deal type set: classic gold star
+      return open+base+'<polygon points="'+sp+'" fill="'+fallback+'" stroke="#1b2a4a" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+    }
+    var fill;
+    if (ds.length === 1) {
+      fill = '<polygon points="'+sp+'" fill="'+DEAL_STYLES[ds[0]].color+'"/>';
+    } else {
+      var id = "stc"+(++starSeq), n = ds.length, r = 20, cx = 12, cy = 12, wedges = "";
+      ds.forEach(function(d,i){
+        var a0 = -Math.PI/2 + i*2*Math.PI/n, a1 = -Math.PI/2 + (i+1)*2*Math.PI/n;
+        var x0 = cx + r*Math.cos(a0), y0 = cy + r*Math.sin(a0), x1 = cx + r*Math.cos(a1), y1 = cy + r*Math.sin(a1);
+        wedges += '<path d="M'+cx+' '+cy+' L'+x0.toFixed(2)+' '+y0.toFixed(2)+' A'+r+' '+r+' 0 '+(n===2?1:0)+' 1 '+x1.toFixed(2)+' '+y1.toFixed(2)+' Z" fill="'+DEAL_STYLES[d].color+'"/>';
+      });
+      fill = '<defs><clipPath id="'+id+'"><polygon points="'+sp+'"/></clipPath></defs><g clip-path="url(#'+id+')">'+wedges+'</g>';
+    }
+    var txt = "";
+    if (ds.length === 1) { // one deal: letter in the middle. Split stars skip the letter so the colors stay visible.
+      txt = '<text x="12" y="14.4" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="800" font-size="6.6" fill="#1b2a4a" stroke="#fff" stroke-width="1.4" paint-order="stroke" stroke-linejoin="round">'+DEAL_STYLES[ds[0]].letter+'</text>';
+    }
+    return open+base+fill+outline+txt+'</svg>';
+  }
+  function pinSVGBase(s, size, deals){
     var c = s.color, sz = size || 26;
     switch(s.shape){
       case "outline": // Target — not yet engaged
@@ -615,8 +658,7 @@ body{font-family:var(--body);color:var(--ink);}
       case "diamond": // Closing — deal in motion
         return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><polygon points="12,2 22,12 12,22 2,12" fill="'+c+'" stroke="#fff" stroke-width="2"/></svg>';
       case "star": // Signed — won
-        var sp = "12,1 15,9 23,9 16.5,14 19,22 12,17 5,22 7.5,14 1,9 9,9";
-        return '<svg width="'+sz+'" height="'+sz+'" viewBox="-2 -2 28 28"><polygon points="'+sp+'" fill="#fff" stroke="#fff" stroke-width="3.6" stroke-linejoin="round"/><polygon points="'+sp+'" fill="'+c+'" stroke="#1b2a4a" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+        return starSVG(sz, c, deals);
       case "pause": // Parked — on hold
         return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="'+c+'" stroke="#fff" stroke-width="2.2"/><rect x="8.3" y="7.4" width="2.6" height="9.2" rx="1" fill="#fff"/><rect x="13.1" y="7.4" width="2.6" height="9.2" rx="1" fill="#fff"/></svg>';
       case "flag": // Claimed — another CCRX rep owns this one
@@ -905,6 +947,7 @@ body{font-family:var(--body);color:var(--ink);}
       profile:f[F.profile], email:f[F.email], nextMeeting:f[F.nextMeeting],
       bSnap:f[F.bSnap], bFit:f[F.bFit], bPresc:f[F.bPresc], bBridge:f[F.bBridge], bKnow:f[F.bKnow],
       hours:f[F.hours], hoursChecked:f[F.hoursChecked],
+      deals: singleSelectListToNames(f[F.dealType]),
       type: (f[F.type] && f[F.type].name) || (typeof f[F.type]==="string" ? f[F.type] : null),
       // Gym badge shows if either the Gym checkbox is ticked or Type is set to Gym.
       gym: !!f[F.gym] || ((f[F.type] && f[F.type].name) || f[F.type]) === "Gym",
@@ -1072,8 +1115,8 @@ body{font-family:var(--body);color:var(--ink);}
       var s = stageColor[c.stage];
       var icon = L.divIcon({
         className:"pin",
-        html: pinSVG(s, s.shape==="star" ? 40 : 26, c.badge),
-        iconSize: s.shape==="star" ? [40,40] : [28,28], iconAnchor: s.shape==="star" ? [20,20] : [14,14]
+        html: pinSVG(s, s.shape==="star" ? 34 : 26, c.badge, s.shape==="star" ? c.deals : null),
+        iconSize: s.shape==="star" ? [34,34] : [28,28], iconAnchor: s.shape==="star" ? [17,17] : [14,14]
       });
       var m = L.marker([c.lat,c.lng], {icon:icon});
       m.on("click", function(){ openSheet(c); });
@@ -1207,7 +1250,7 @@ body{font-family:var(--body);color:var(--ink);}
 
   function openBrief(c){
     var s = stageColor[c.stage] || {color:"#8a8a8a"};
-    var head = '<div class="sheet-stage" style="background:'+s.color+'">'+(c.stage||"Unknown")+'</div>';
+    var head = '<div class="sheet-stage" style="background:'+s.color+'">'+(c.stage||"Unknown")+'</div>'+dealPills(c);
     if (c.fit) head += '<span class="sheet-fit">'+esc(c.fit)+'</span>';
     if (c.interest) head += pill(c.interest, INTEREST_COLORS);
     (c.owner||[]).forEach(function(o){ head += pill(o, OWNER_COLORS); });
@@ -1244,7 +1287,7 @@ body{font-family:var(--body);color:var(--ink);}
   function openSheet(c){
     var s = stageColor[c.stage] || {color:"#8a8a8a"};
     var mapsQ = encodeURIComponent(c.address || (c.lat+","+c.lng));
-    var html = '<div class="sheet-stage" style="background:'+s.color+'">'+ (c.stage||"Unknown") + (c.gym ? ' &middot; Gym' : '') +'</div>';
+    var html = '<div class="sheet-stage" style="background:'+s.color+'">'+ (c.stage||"Unknown") + (c.gym ? ' &middot; Gym' : '') +'</div>'+dealPills(c);
     if (c.type) html += '<span class="sheet-fit" style="background:'+(TYPE_COLORS[c.type]||TYPE_COLORS.Other).bg+';color:'+(TYPE_COLORS[c.type]||TYPE_COLORS.Other).fg+';border-color:transparent;">'+esc(c.type)+'</span>';
     if (c.fit) html += '<span class="sheet-fit">'+c.fit+'</span>';
     if (c.interest) html += pill(c.interest, INTEREST_COLORS);
