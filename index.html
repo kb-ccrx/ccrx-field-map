@@ -304,6 +304,14 @@ body{font-family:var(--body);color:var(--ink);}
 .brief-sec{margin-top:20px;}
 .brief-sec h3{font-family:var(--body);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line);}
 .brief-text{font-size:14.5px;line-height:1.6;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
+.story{list-style:none;margin:0;padding:0;border-left:2px solid var(--line);}
+.story li{position:relative;padding:0 0 10px 14px;display:flex;gap:10px;font-size:13.5px;line-height:1.5;color:var(--ink);}
+.story li:before{content:"";position:absolute;left:-5px;top:6px;width:8px;height:8px;border-radius:50%;background:var(--gold);}
+.story .sd{flex:0 0 52px;font-weight:700;color:var(--navy);font-size:12.5px;padding-top:1px;}
+.story .st{flex:1;word-break:break-word;}
+.story-next{margin-top:6px;background:var(--surface-2);border-left:3px solid var(--navy);border-radius:8px;padding:8px 10px;}
+.story-next .lbl{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-dim);margin-bottom:3px;}
+.story-next ul{margin:0;padding-left:16px;font-size:13.5px;line-height:1.5;}
 .brief-fit{display:inline-block;font-weight:700;font-size:12px;color:var(--navy);margin-bottom:6px;}
 .brief-note{margin-top:20px;font-size:12.5px;color:var(--ink-dim);background:var(--surface-2);border-radius:10px;padding:10px 12px;line-height:1.5;}
 .player{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:9px;}
@@ -403,7 +411,7 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-28 smaller deal stars</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-29 story so far</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -514,7 +522,7 @@ body{font-family:var(--body);color:var(--ink);}
     bSnap:"fldJuBm06RYjCQmrc", bFit:"fldgC8npbKOiA8NaA", bPresc:"fldET6l3SntUcxQ6R",
     bBridge:"fldZpL1fypkFqFicE", bKnow:"fld21l33eHEl4PnGK",
     hours:"fld9zvYOeTLDi9OQx", hoursChecked:"fldr1K50o16d2Olid",
-    dealType:"fldFVatwzw5A7hRhO"
+    dealType:"fldFVatwzw5A7hRhO", bStory:"fldZksuIjJbSvSRwq"
   };
   var CF = { name:"fld5SWDkRHf3epyYD", clinic:"fldInKK6h0cRnOAC7", role:"fldptYg8yoGdrzP58", phone:"fldc49tNM7ZgGUBew", email:"fldosuZJj2OyAOsDa", notes:"fldYuTso9QliGstdW" }; // Contacts field IDs
   var TF = { // Tasks field IDs
@@ -945,7 +953,7 @@ body{font-family:var(--body);color:var(--ink);}
       nextAction:f[F.nextAction], lastContact:f[F.lastContact],
       activityLog:f[F.activityLog],
       profile:f[F.profile], email:f[F.email], nextMeeting:f[F.nextMeeting],
-      bSnap:f[F.bSnap], bFit:f[F.bFit], bPresc:f[F.bPresc], bBridge:f[F.bBridge], bKnow:f[F.bKnow],
+      bSnap:f[F.bSnap], bFit:f[F.bFit], bPresc:f[F.bPresc], bBridge:f[F.bBridge], bKnow:f[F.bKnow], bStory:f[F.bStory],
       hours:f[F.hours], hoursChecked:f[F.hoursChecked],
       deals: singleSelectListToNames(f[F.dealType]),
       type: (f[F.type] && f[F.type].name) || (typeof f[F.type]==="string" ? f[F.type] : null),
@@ -1151,6 +1159,51 @@ body{font-family:var(--body);color:var(--ink);}
   function briefSection(title, bodyHtml){
     return '<section class="brief-sec"><h3>'+title+'</h3>'+bodyHtml+'</section>';
   }
+  // "The story so far": dated steps, oldest first. Uses the written Brief: Story So Far field when it exists,
+  // otherwise builds a condensed timeline from the Activity Log. "What's next" always comes from live open tasks.
+  function fmtShortDate(iso){
+    var m = String(iso||"").match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? parseInt(m[2],10)+"/"+parseInt(m[3],10) : String(iso||"");
+  }
+  function storyItems(c){
+    var src = (c.bStory && c.bStory.trim()) ? c.bStory : (c.activityLog || "");
+    var written = !!(c.bStory && c.bStory.trim());
+    var items = [];
+    String(src).split(/\n+/).forEach(function(line){
+      line = line.trim(); if (!line) return;
+      var m = line.match(/^~?\s*(\d{1,2}\/\d{1,2}(?:\/\d{2,4})?)\s*(?:\([^)]*\))?\s*[:\u2014\u2013\-]*\s*(.*)$/);
+      var date = m ? m[1] : "", text = m ? m[2] : line;
+      if (!written) { // condense a long log entry to its first sentence or two
+        var cut = text.length > 170 ? text.slice(0,170).replace(/\s+\S*$/,"") + "\u2026" : text;
+        text = cut;
+      }
+      if (!text) return;
+      if (!date && items.length) { items[items.length-1].text += " " + text; return; }
+      items.push({date:date, text:text});
+    });
+    return items;
+  }
+  function storyHtml(c){
+    var items = storyItems(c);
+    var tasks = allTasks.filter(function(t){ return t.clinicId === c.id; }).sort(function(a,b){
+      return String(a.due||"9999").localeCompare(String(b.due||"9999"));
+    });
+    if (!items.length && !tasks.length && !c.nextAction) return "";
+    var html = "";
+    if (items.length) {
+      html += '<ol class="story">' + items.map(function(i){
+        return '<li><span class="sd">'+esc(i.date||"")+'</span><span class="st">'+esc(i.text)+'</span></li>';
+      }).join("") + '</ol>';
+    }
+    if (tasks.length) {
+      html += '<div class="story-next"><div class="lbl">What is next</div><ul>' + tasks.map(function(t){
+        return '<li>'+(t.due?'<b>'+esc(fmtShortDate(t.due))+'</b> ':'')+esc(t.text)+'</li>';
+      }).join("") + '</ul></div>';
+    } else if (c.nextAction) {
+      html += '<div class="story-next"><div class="lbl">What is next</div><ul><li>'+esc(c.nextAction)+'</li></ul></div>';
+    }
+    return html;
+  }
   function briefText(t){ return '<div class="brief-text">'+esc(t)+'</div>'; }
   function briefPlayers(clinicId){
     var list = (contactsDetailByClinicId[clinicId]||[]).slice();
@@ -1266,6 +1319,8 @@ body{font-family:var(--body);color:var(--ink);}
     }
     html += meta.join("");
 
+    var storyBlock = storyHtml(c);
+    if (storyBlock) html += briefSection("The Story So Far", storyBlock);
     var anyBrief = c.bSnap || c.bFit || c.bPresc || c.bBridge || c.bKnow;
     var snap = c.bSnap || (!anyBrief ? c.profile : "");
     if (snap) html += briefSection("Company Snapshot", briefText(snap));
