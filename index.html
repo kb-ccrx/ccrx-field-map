@@ -265,7 +265,10 @@ body{font-family:var(--body);color:var(--ink);}
 #listSort,#listDist{flex:1;min-width:0;font-family:var(--body);font-size:14px;font-weight:600;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);}
 #listFilterBtn{flex:0 0 auto;font-family:var(--body);font-weight:600;font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid var(--navy);background:transparent;color:var(--navy);cursor:pointer;}
 #listFilterBtn.has{background:var(--navy);color:#fff;}
-#listFilters{margin-top:10px;max-height:46vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#listFilters{margin-top:10px;max-height:min(30vh,230px);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#listFilterDone{display:block;width:100%;margin-top:8px;font-family:var(--body);font-weight:600;font-size:13px;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--navy);cursor:pointer;}
+#listExport{font-family:var(--body);font-weight:600;font-size:12.5px;border:1px solid var(--navy);background:transparent;color:var(--navy);cursor:pointer;border-radius:8px;padding:4px 10px;margin-left:10px;}
+.lf-group{margin-bottom:8px;}
 .lf-group{margin-bottom:12px;}
 .lf-title{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);margin-bottom:6px;}
 .lf-chips{display:flex;flex-wrap:wrap;gap:6px;}
@@ -430,7 +433,7 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-30 portal intake panel v3</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-30 list filters compact + CSV export v4</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -489,8 +492,9 @@ body{font-family:var(--body);color:var(--ink);}
       <button id="listFilterBtn">Filters</button>
     </div>
     <div id="listFilters" hidden></div>
+    <button id="listFilterDone" hidden>Done, show list</button>
   </div>
-  <div id="listMetaRow"><span id="listCount"></span><button id="listClear" hidden>Clear filters</button></div>
+  <div id="listMetaRow"><span><span id="listCount"></span><button id="listExport" title="Download the locations shown as a CSV file">Export CSV</button></span><button id="listClear" hidden>Clear filters</button></div>
   <div id="listMsg" hidden></div>
   <div id="listBody"></div>
 </div>
@@ -2432,6 +2436,53 @@ body{font-family:var(--body);color:var(--ink);}
     return d;
   }
 
+  function csvCell(v){
+    if (v === null || v === undefined) return "";
+    var t = String(v).replace(/\r\n|\r/g, "\n");
+    if (/^[=@\t]/.test(t)) t = "'" + t;
+    return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  }
+
+  function exportListCsv(){
+    var rows = buildListRows();
+    if (!rows.length){ setListMsg("Nothing to export. No locations match."); return; }
+    var cols = [
+      ["Name", function(c){ return c.name; }],
+      ["Stage", function(c){ return c.stage; }],
+      ["Type", function(c){ return c.type || (c.gym ? "Gym" : ""); }],
+      ["Fit", function(c){ return c.fit; }],
+      ["Interest", function(c){ return c.interest; }],
+      ["Owner", function(c){ return (c.owner||[]).join("; "); }],
+      ["Address", function(c){ return c.address; }],
+      ["Phone", function(c){ return c.phone; }],
+      ["Email", function(c){ return c.email; }],
+      ["Website", function(c){ return c.website; }],
+      ["Contacts", function(c){ return c.contactNames; }],
+      ["Prescriber", function(c){ return c.presName; }],
+      ["Credential", function(c){ return c.presCred; }],
+      ["Deal Type", function(c){ return (c.deals||[]).join("; "); }],
+      ["Last Contact", function(c){ return c.lastContact; }],
+      ["Next Meeting", function(c){ return c.nextMeeting; }],
+      ["Next Action", function(c){ return c.nextAction; }],
+      ["Open Tasks", function(c, r){ return r.open || 0; }],
+      ["Overdue Tasks", function(c, r){ return r.overdue || 0; }],
+      ["Notes", function(c){ return c.notes; }]
+    ];
+    var lines = [cols.map(function(k){ return csvCell(k[0]); }).join(",")];
+    rows.forEach(function(r){
+      lines.push(cols.map(function(k){ return csvCell(k[1](r.c, r)); }).join(","));
+    });
+    var blob = new Blob(["\uFEFF" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+    var d = new Date(), pad = function(n){ return (n<10?"0":"")+n; };
+    var name = "ccrx_locations_" + d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + ".csv";
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    setListMsg("Exported " + rows.length + " location" + (rows.length===1?"":"s") + " to " + name);
+    setTimeout(function(){ setListMsg(""); }, 4000);
+  }
+
   function renderListScreen(resetScroll){
     var body = $("listBody"), prevTop = body.scrollTop;
     var total = Object.keys(allClinicsById).length;
@@ -2601,7 +2652,13 @@ body{font-family:var(--body);color:var(--ink);}
     $("listFilterBtn").onclick = function(){
       var f = $("listFilters");
       f.hidden = !f.hidden;
+      $("listFilterDone").hidden = f.hidden;
     };
+    $("listFilterDone").onclick = function(){
+      $("listFilters").hidden = true;
+      $("listFilterDone").hidden = true;
+    };
+    $("listExport").onclick = exportListCsv;
     $("listClear").onclick = function(){
       resetListState();
       $("listSearch").value = "";
