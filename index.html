@@ -301,6 +301,25 @@ body{font-family:var(--body);color:var(--ink);}
 #briefHeader h1{font-family:var(--display);font-size:18px;line-height:1.25;}
 #briefClose{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.15);color:#fff;font-size:18px;cursor:pointer;flex:0 0 auto;}
 #briefBody{flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 28px);}
+.intake{margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.intake summary{cursor:pointer;list-style:none;padding:12px 14px;font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--navy);display:flex;align-items:center;justify-content:space-between;}
+.intake summary::-webkit-details-marker{display:none;}
+.intake summary:after{content:"+";font-size:18px;line-height:1;color:var(--ink-dim);}
+.intake[open] summary:after{content:"\2212";}
+.intake-sub{font-weight:500;text-transform:none;letter-spacing:0;font-size:12px;color:var(--ink-dim);margin-left:8px;flex:1;}
+.intake-body{padding:2px 14px 14px;border-top:1px solid var(--line);}
+.irow{display:grid;grid-template-columns:112px 1fr auto;gap:10px;align-items:start;padding:9px 0;border-bottom:1px solid var(--line);}
+.ilbl{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-dim);padding-top:2px;}
+.ival{font-size:14px;line-height:1.45;color:var(--ink);word-break:break-word;white-space:pre-wrap;}
+.irow.missing .ival{color:var(--ink-dim);font-style:italic;opacity:.7;}
+.icopy,.icopy-all{font:inherit;font-size:12px;font-weight:700;border:1px solid var(--line);background:var(--surface);color:var(--navy);border-radius:8px;padding:5px 10px;cursor:pointer;}
+.icopy.ok,.icopy-all.ok{background:var(--navy);color:#fff;border-color:var(--navy);}
+.icopy-sp{width:50px;}
+.isec{margin-top:16px;padding-bottom:4px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gold);border-bottom:2px solid var(--line);}
+.ireq{color:var(--gold);}
+.ihint{font-size:11.5px;font-style:normal;color:var(--ink-dim);margin-top:3px;line-height:1.4;}
+.icopy-all{margin-top:12px;width:100%;padding:9px 10px;}
+.intake-note{font-size:12.5px;color:var(--ink-dim);margin-top:8px;}
 .brief-sec{margin-top:20px;}
 .brief-sec h3{font-family:var(--body);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--line);}
 .brief-text{font-size:14.5px;line-height:1.6;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
@@ -411,7 +430,7 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-29 story so far</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-30 portal intake panel v3</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -522,7 +541,11 @@ body{font-family:var(--body);color:var(--ink);}
     bSnap:"fldJuBm06RYjCQmrc", bFit:"fldgC8npbKOiA8NaA", bPresc:"fldET6l3SntUcxQ6R",
     bBridge:"fldZpL1fypkFqFicE", bKnow:"fld21l33eHEl4PnGK",
     hours:"fld9zvYOeTLDi9OQx", hoursChecked:"fldr1K50o16d2Olid",
-    dealType:"fldFVatwzw5A7hRhO", bStory:"fldZksuIjJbSvSRwq"
+    dealType:"fldFVatwzw5A7hRhO", bStory:"fldZksuIjJbSvSRwq",
+    presName:"fldZUpDpcbMgxi8XV", presCred:"fldFr864fAPIuy03G", npi:"fldZPQzutuQQRTWx8",
+    billing:"fldU46DVGsPIlAc7Y", delivery:"fldQ5jyfKG4YaGz6v", noDelDays:"fldPVYoLN3jvgFDaL",
+    members:"fldTR3fhBJoy21KoD", experience:"fldkx7trAitE2WIAE", vendor:"fldllHeLBj5zOzrbK",
+    orderToday:"fldFSd50AumlYFWfi", vials:"fldJx3tHXGmwwBmKA", answers:"fldesrRRwV0RjvYkW"
   };
   var CF = { name:"fld5SWDkRHf3epyYD", clinic:"fldInKK6h0cRnOAC7", role:"fldptYg8yoGdrzP58", phone:"fldc49tNM7ZgGUBew", email:"fldosuZJj2OyAOsDa", notes:"fldYuTso9QliGstdW" }; // Contacts field IDs
   var TF = { // Tasks field IDs
@@ -956,6 +979,11 @@ body{font-family:var(--body);color:var(--ink);}
       bSnap:f[F.bSnap], bFit:f[F.bFit], bPresc:f[F.bPresc], bBridge:f[F.bBridge], bKnow:f[F.bKnow], bStory:f[F.bStory],
       hours:f[F.hours], hoursChecked:f[F.hoursChecked],
       deals: singleSelectListToNames(f[F.dealType]),
+      presName:f[F.presName]||"", presCred:singleSelectListToNames(f[F.presCred])[0]||"", npi:f[F.npi]||"",
+      billing:singleSelectListToNames(f[F.billing])[0]||"", delivery:singleSelectListToNames(f[F.delivery])[0]||"",
+      noDelDays:singleSelectListToNames(f[F.noDelDays]), members:f[F.members]||"",
+      experience:singleSelectListToNames(f[F.experience])[0]||"", vendor:f[F.vendor]||"",
+      orderToday:f[F.orderToday]||"", answers:f[F.answers]||"", vials:(typeof f[F.vials]==="number" ? String(f[F.vials]) : ""),
       type: (f[F.type] && f[F.type].name) || (typeof f[F.type]==="string" ? f[F.type] : null),
       // Gym badge shows if either the Gym checkbox is ticked or Type is set to Gym.
       gym: !!f[F.gym] || ((f[F.type] && f[F.type].name) || f[F.type]) === "Gym",
@@ -1204,6 +1232,237 @@ body{font-family:var(--body);color:var(--ink);}
     }
     return html;
   }
+
+  // ---- Portal intake panel ----
+  // An expanding panel at the top of the Full Brief that lays out the CCRX portal intake fields in the
+  // order you fill them in, each with a copy button. Anything not in the CRM shows as "Not in CRM".
+  var DAY_ORDER = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  function fmtClock(t, withMer){
+    var m = String(t).match(/^(\d{1,2}):(\d{2})$/); if (!m) return t;
+    var hh = parseInt(m[1],10), mm = m[2], mer = hh>=12 ? "PM" : "AM";
+    var h12 = hh%12; if (h12===0) h12 = 12;
+    return h12 + (mm==="00" ? "" : ":"+mm) + (withMer ? " "+mer : "");
+  }
+  function fmtRange(a,b){
+    var merA = parseInt(a,10)>=12 ? "PM":"AM", merB = parseInt(b,10)>=12 ? "PM":"AM";
+    return fmtClock(a, merA!==merB) + " to " + fmtClock(b, true);
+  }
+  // Short form of the Hours field, leaving out closed days and days they cannot take deliveries.
+  function timingShort(c){
+    if (!c.hours) return "";
+    var skip = {}; (c.noDelDays||[]).forEach(function(d){ skip[d]=1; });
+    var byDay = {};
+    String(c.hours).split(/\n+/).forEach(function(line){
+      var m = line.trim().match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*\s+(.*)$/i); if (!m) return;
+      var d = m[1].charAt(0).toUpperCase()+m[1].slice(1,3).toLowerCase();
+      if (/closed/i.test(m[2])) return;
+      var ranges = m[2].split(",").map(function(r){
+        var mm = r.trim().match(/^(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/); return mm ? fmtRange(mm[1],mm[2]) : "";
+      }).filter(Boolean);
+      if (ranges.length) byDay[d] = ranges.join(" and ");
+    });
+    var groups = [], seen = {};
+    DAY_ORDER.forEach(function(d){
+      if (!byDay[d] || skip[d]) return;
+      var key = byDay[d];
+      if (seen[key]===undefined){ seen[key] = groups.length; groups.push({days:[], text:key}); }
+      groups[seen[key]].days.push(d);
+    });
+    if (!groups.length) return "";
+    groups.sort(function(a,b){ return b.days.length - a.days.length; });
+    return groups.map(function(g){ return g.days.join(", ")+" "+g.text+"."; }).join(" ");
+  }
+  function intakeContacts(clinicId){
+    var list = (contactsDetailByClinicId[clinicId]||[]).slice();
+    var pref = ["Champion","Gatekeeper","Decision-Maker","Decision Maker","Unclear"];
+    list.sort(function(a,b){
+      var ia = pref.indexOf(a.role); if (ia<0) ia = 9;
+      var ib = pref.indexOf(b.role); if (ib<0) ib = 9;
+      return ia-ib;
+    });
+    return list;
+  }
+  function splitName(n){
+    var parts = String(n||"").trim().replace(/,\s*(NP|PA|MD|DO|APRN|FNP|RN|PA-C|NP-C)\b.*$/i,"").split(/\s+/).filter(Boolean);
+    if (parts.length<2) return [parts[0]||"", ""];
+    return [parts.slice(0,-1).join(" "), parts[parts.length-1]];
+  }
+  // "940 Centre Cir Ste 1018, Altamonte Springs, FL 32714" -> line 1, line 2, city, state, zip
+  function splitAddress(a){
+    var out = {l1:"", l2:"", city:"", state:"", zip:""};
+    if (!a) return out;
+    var parts = String(a).split(",").map(function(x){ return x.trim(); }).filter(Boolean);
+    if (parts.length){
+      var street = parts[0], m = street.match(/^(.*?)[\s,]+((?:Ste|Suite|Unit|Apt|Bldg|Building)\b.*|#.*)$/i);
+      if (m){ out.l1 = m[1]; out.l2 = m[2]; } else out.l1 = street;
+    }
+    if (parts.length>1 && /^[A-Za-z]{2}\s+\d{5}/.test(parts[parts.length-1])) {
+      var sz = parts[parts.length-1].match(/^([A-Za-z]{2})\s+(\d{5})/); out.state = sz[1].toUpperCase(); out.zip = sz[2];
+      if (parts.length>2) out.city = parts[parts.length-2];
+      if (parts.length>3 && /^(Ste|Suite|Unit|Apt|Bldg|#)/i.test(parts[1])) out.l2 = parts[1];
+    } else if (parts.length>2) {
+      out.city = parts[1];
+      var s2 = parts[2].match(/^([A-Za-z]{2})\s*(\d{5})?/); if (s2){ out.state = s2[1].toUpperCase(); out.zip = s2[2]||""; }
+    }
+    return out;
+  }
+  var STATE_NAMES = {AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",DE:"Delaware",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming",DC:"District of Columbia"};
+  // Portal Answers field: one "Question: answer" per line. Look up by a short key from the question.
+  function portalAnswer(c, key){
+    var k = key.toLowerCase(), found = "";
+    String(c.answers||"").split(/\n+/).forEach(function(line){
+      var i = line.indexOf(":"); if (i<0 || found) return;
+      var q = line.slice(0,i).trim().toLowerCase();
+      if (q.indexOf(k)===0 || q.indexOf(k)>=0) found = line.slice(i+1).trim();
+    });
+    return found;
+  }
+  function portalBilling(v){ return v==="Clinic Pay" ? "Bill clinic" : v==="Patient Pay" ? "Bill patient" : v==="Not sure yet" ? "Not yet known" : v; }
+  function portalDelivery(v){ return v==="Ship to Clinic" ? "Deliver to clinic" : v==="Ship to Patient" ? "Deliver to patient" : v==="Not sure yet" ? "Not yet known" : v; }
+  var FULL_DAYS = {Mon:"Monday",Tue:"Tuesday",Wed:"Wednesday",Thu:"Thursday",Fri:"Friday",Sat:"Saturday",Sun:"Sunday"};
+  // The portal's own dropdown and checkbox options, so values can be matched to exactly what you will pick.
+  var OPTS = {
+    business: ["Gym or fitness studio","Med spa","Chiropractic or physical therapy","Personal trainer or coach","Medical office or clinic","Wellness or longevity brand","Multi-location or chain","Other","Not known yet"],
+    members: ["Under 50 members / month","50 to 200 members / month","200 to 1,000 members / month","1,000+ members / month","Not known yet"],
+    peptide: ["New to peptides, has never offered them","Has offered peptides here and there, nothing steady","Offers peptides today through another vendor","Not known yet"],
+    contact: ["Email","Phone call","Text message","In person","Not known yet"],
+    lead: ["Not recorded","Company provided","Self sourced","Referral","Event"],
+    volume: ["Not asked yet","Under 5 orders a month","5 to 10 orders a month","10 to 25 orders a month","25 to 50 orders a month","More than 50 orders a month"],
+    status: ["New prescriber, never ordered before","Existing prescriber, reactivating account","Transfer, moving from another rep or territory","Referral from an existing prescriber","In-bound, the practice reached out directly"],
+    prescriber: ["MD, Medical Doctor","DO, Doctor of Osteopathic Medicine","NP, Nurse Practitioner","PA, Physician Assistant","ARNP, Advanced Registered Nurse Practitioner","DC, Doctor of Chiropractic","DPM, Doctor of Podiatric Medicine","Other"],
+    products: ["Weight management","Peptides","Hormones","Aesthetics","IV and injectables","Longevity","Sexual wellness","Other"]
+  };
+  // Match a stored value to one of the portal's options (exact, then by leading words). Returns the portal's wording.
+  function matchOpt(v, list){
+    var s = String(v||"").trim().toLowerCase(); if (!s) return "";
+    for (var i=0;i<list.length;i++){ if (list[i].toLowerCase()===s) return list[i]; }
+    for (var j=0;j<list.length;j++){ var o=list[j].toLowerCase(); if (o.indexOf(s)===0 || s.indexOf(o.split(",")[0])===0) return list[j]; }
+    return "";
+  }
+  var CRM_TYPE_TO_BUSINESS = {"Med Spa":"Med spa","Aesthetics / Skin":"Med spa","Medical Clinic":"Medical office or clinic","Longevity / Hormone":"Wellness or longevity brand","Wellness Center":"Wellness or longevity brand","IV / Hydration":"Wellness or longevity brand","Chiropractic":"Chiropractic or physical therapy","Gym":"Gym or fitness studio","Other":"Other"};
+  var PEPTIDE_MAP = {"New to peptides":0,"Some experience":1,"Experienced":2,"Not known yet":3};
+  var PRESCRIBER_MAP = {"MD":0,"DO":1,"NP":2,"PA":3,"Other":7};
+  // Sections and rows in the order of the portal's "Refer a clinic" form. req = starred in the portal.
+  function intakeSections(c){
+    var ct = intakeContacts(c.id), pc = ct[0] || {}, pn = splitName(pc.name), pr = splitName(c.presName), ad = splitAddress(c.address);
+    var A = function(k){ return portalAnswer(c, k); };
+    var practiceName = String(c.name||"").replace(/\s*\([^)]*\)\s*$/,"");
+    var meeting = A("Prescriber meeting");
+    var bizAns = matchOpt(A("Type of business"), OPTS.business) || A("Type of business");
+    var bizSug = !bizAns && c.type && CRM_TYPE_TO_BUSINESS[c.type] ? CRM_TYPE_TO_BUSINESS[c.type] : "";
+    var bizVal = bizAns || bizSug;
+    var pepIdx = PEPTIDE_MAP[c.experience]; var pepVal = (pepIdx!==undefined) ? OPTS.peptide[pepIdx] : "";
+    var prIdx = PRESCRIBER_MAP[c.presCred]; var prVal = (prIdx!==undefined) ? OPTS.prescriber[prIdx] : (c.presCred||"");
+    var secs = [
+      {t:"Where is the practice?", rows:[
+        {l:"Where is the practice located?", v: ad.state ? (STATE_NAMES[ad.state]||ad.state) : "", req:1}]},
+      {t:"Prescriber meeting", rows:[{l:"Meeting status", v: meeting}]},
+      {t:"Client support manager assistance", rows:[{l:"Is CSM assistance needed?", v:A("CSM assistance")}]},
+      {t:"Onboarding status and awareness", rows:[
+        {l:"Prescriber in agreement, or preliminary?", v:A("Onboarding agreement")},
+        {l:"Aware of CCRX's current price list?", v:A("Price list")},
+        {l:"Price proposal for this practice?", v:A("Price proposal")},
+        {l:"Aware of LifeFile (eprescribing)?", v:A("LifeFile awareness")}]},
+      {t:"About this account", rows:[
+        {l:"Type of business", v:bizVal, sug:bizSug, opts:OPTS.business, req:1},
+        {l:"Members a month", v:matchOpt(c.members, OPTS.members) || c.members || "", opts:OPTS.members, req:1},
+        {l:"Member count, if they gave one", v:A("Member count")},
+        {l:"Number of locations", v:A("Number of locations")},
+        {l:"Peptide experience", v:pepVal, opts:OPTS.peptide, req:1},
+        {l:"How they want to be contacted", v:matchOpt(A("How they want to be contacted"), OPTS.contact)||A("How they want to be contacted"), opts:OPTS.contact, req:1},
+        {l:"Lead source", v:matchOpt(A("Lead source"), OPTS.lead)||A("Lead source"), opts:OPTS.lead}]},
+      {t:"Deal qualification", rows:[
+        {l:"Expected order volume", v:matchOpt(A("Expected order volume"), OPTS.volume)||A("Expected order volume"), opts:OPTS.volume},
+        {l:"Expected vials per month", v:c.vials||""},
+        {l:"Target start month", v:A("Target start month")},
+        {l:"Product categories they order", v:A("Product categories"), opts:OPTS.products},
+        {l:"Multiple practices behind this prescriber?", v:A("Multiple practices")},
+        {l:"More prescribers going to be requesting?", v:A("More prescribers")},
+        {l:"What they order today", v:c.orderToday || c.vendor || ""},
+        {l:"What they would order from CCRX", v:A("What they would order")},
+        {l:"Current vendor supplies powdered form?", v:A("Powdered")},
+        {l:"Shipping billed on top, or included?", v:A("Shipping billed")},
+        {l:"Supplies included in vendor's price?", v:A("Supplies included")},
+        {l:"Competitor pricing they shared", v:A("Competitor pricing")}]},
+      {t:"Prescriber and practice information", rows:[
+        {l:"Current ordering status", v:matchOpt(A("Current ordering status"), OPTS.status)||A("Current ordering status"), opts:OPTS.status},
+        {l:"Prescriber first name", v:pr[0]},
+        {l:"Prescriber last name", v:pr[1]},
+        {l:"Prescriber type", v:prVal, opts:OPTS.prescriber},
+        {l:"Office contact first name", v:pn[0]},
+        {l:"Office contact last name", v:pn[1]},
+        {l:"Office contact email", v:pc.email||""},
+        {l:"Practice phone number", v:c.phone||pc.phone||""},
+        {l:"Practice fax number", v:A("Fax")},
+        {l:"Prescriber NPI number", v:c.npi||""},
+        {l:"Practice name", v:practiceName},
+        {l:"Practice address line 1", v:ad.l1},
+        {l:"Address line 2", v:ad.l2},
+        {l:"City", v:ad.city},
+        {l:"State", v:ad.state ? (STATE_NAMES[ad.state]||ad.state) : ""},
+        {l:"Zip / postal code", v:ad.zip},
+        {l:"Country", v: c.address ? "United States" : ""}]},
+      {t:"Billing preference", rows:[
+        {l:"Billing preference", v:portalBilling(c.billing||"")},
+        {l:"Billing notes", v:A("Billing notes")}]},
+      {t:"Medication delivery preference", rows:[
+        {l:"Delivery preference", v:portalDelivery(c.delivery||"")},
+        {l:"Days the practice is closed", v:(c.noDelDays||[]).map(function(d){ return FULL_DAYS[d]||d; }).join(", ")},
+        {l:"Anything else about timing", v:timingShort(c)}]},
+      {t:"Additional details and notes", rows:[
+        {l:"Additional details and provider preferences", v:A("Additional details")},
+        {l:"Notes for client support", v:A("Notes for client support")},
+        {l:"Huddle before anyone contacts this practice?", v:A("Huddle")},
+        {l:"Submitting on behalf of", v:A("Submitting on behalf")},
+        {l:"LifeFile login credentials delivery", v:A("LifeFile credentials")}]}
+    ];
+    return {secs:secs, others: ct.slice(1).map(function(x){ return x.name; })};
+  }
+  function copyText(text, btn){
+    function done(){ var old = btn.textContent; btn.textContent = "Copied"; btn.classList.add("ok"); setTimeout(function(){ btn.textContent = old; btn.classList.remove("ok"); }, 1100); }
+    function fallback(){
+      var ta = document.createElement("textarea"); ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done(); } catch(e){}
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, fallback);
+    } else fallback();
+  }
+  function intakeHtml(c){
+    var r = intakeSections(c), n = 0, filled = 0, idx = 0;
+    r.secs.forEach(function(s){ s.rows.forEach(function(x){ n++; if (x.v && String(x.v).trim()) filled++; }); });
+    var html = '<details class="intake"><summary>Portal intake <span class="intake-sub">'+filled+' of '+n+' fields filled</span></summary><div class="intake-body">';
+    r.secs.forEach(function(s){
+      html += '<div class="isec">'+esc(s.t)+'</div>';
+      s.rows.forEach(function(x){
+        var has = x.v && String(x.v).trim();
+        html += '<div class="irow'+(has?'':' missing')+'"><div class="ilbl">'+esc(x.l)+(x.req?' <span class="ireq">*</span>':'')+'</div>';
+        var extra = '';
+        if (has && x.sug && x.v===x.sug) extra = '<div class="ihint">Suggested from the CRM type. Confirm before you pick it.</div>';
+        if (!has && x.opts) extra = '<div class="ihint">Options: '+esc(x.opts.join(" / "))+'</div>';
+        html += '<div class="ival">'+(has ? esc(x.v) : 'Not in CRM')+extra+'</div>';
+        html += has ? '<button class="icopy" data-i="'+idx+'">Copy</button>' : '<span class="icopy-sp"></span>';
+        html += '</div>';
+        idx++;
+      });
+    });
+    if (r.others.length) html += '<div class="intake-note">Other contacts on file: '+esc(r.others.join(", "))+'</div>';
+    html += '<button class="icopy-all">Copy all filled fields</button></div></details>';
+    return html;
+  }
+  function wireIntake(c){
+    var flat = []; intakeSections(c).secs.forEach(function(s){ s.rows.forEach(function(x){ flat.push(x); }); });
+    var root = $("briefBody");
+    Array.prototype.forEach.call(root.querySelectorAll(".icopy"), function(b){
+      b.onclick = function(){ copyText(String(flat[parseInt(b.getAttribute("data-i"),10)].v), b); };
+    });
+    var all = root.querySelector(".icopy-all");
+    if (all) all.onclick = function(){
+      copyText(flat.filter(function(x){ return x.v && String(x.v).trim(); }).map(function(x){ return x.l+": "+x.v; }).join("\n"), all);
+    };
+  }
   function briefText(t){ return '<div class="brief-text">'+esc(t)+'</div>'; }
   function briefPlayers(clinicId){
     var list = (contactsDetailByClinicId[clinicId]||[]).slice();
@@ -1319,6 +1578,7 @@ body{font-family:var(--body);color:var(--ink);}
     }
     html += meta.join("");
 
+    html += intakeHtml(c);
     var storyBlock = storyHtml(c);
     if (storyBlock) html += briefSection("The Story So Far", storyBlock);
     var anyBrief = c.bSnap || c.bFit || c.bPresc || c.bBridge || c.bKnow;
@@ -1335,6 +1595,7 @@ body{font-family:var(--body);color:var(--ink);}
 
     $("briefTitle").textContent = c.name;
     $("briefBody").innerHTML = html;
+    wireIntake(c);
     $("briefBody").scrollTop = 0;
     $("briefScreen").classList.add("show");
   }
