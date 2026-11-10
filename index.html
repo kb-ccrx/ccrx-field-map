@@ -269,6 +269,12 @@ body{font-family:var(--body);color:var(--ink);}
 #listFilterDone{display:block;width:100%;margin-top:8px;font-family:var(--body);font-weight:600;font-size:13px;padding:8px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--navy);cursor:pointer;}
 #listExport{font-family:var(--body);font-weight:600;font-size:12.5px;border:1px solid var(--navy);background:transparent;color:var(--navy);cursor:pointer;border-radius:8px;padding:4px 10px;margin-left:10px;}
 .lf-group{margin-bottom:8px;}
+.sc-person{margin-bottom:8px;}
+.sc-person:last-child{margin-bottom:0;}
+.sc-name{font-weight:600;color:var(--ink);}
+.sc-role{font-weight:500;color:var(--ink-dim);font-size:12px;}
+.sc-links{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:2px;font-size:13px;}
+.sc-links a{color:var(--navy);text-decoration:underline;word-break:break-all;}
 .lf-group{margin-bottom:12px;}
 .lf-title{font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-dim);margin-bottom:6px;}
 .lf-chips{display:flex;flex-wrap:wrap;gap:6px;}
@@ -433,7 +439,7 @@ body{font-family:var(--body);color:var(--ink);}
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-10-30 list filters compact + CSV export v4</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-11-09 contact phone and email in popout and brief v5</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -1564,6 +1570,27 @@ body{font-family:var(--body);color:var(--ink);}
       '<div style="color:#8a8a8a;font-size:11px;margin-top:2px;">'+checked+'</div>');
   }
 
+  function phoneLink(ph){ return '<a href="tel:'+esc(String(ph).replace(/[^0-9+]/g,""))+'">'+esc(ph)+'</a>'; }
+  function emailLink(em){ return '<a href="mailto:'+esc(em)+'">'+esc(em)+'</a>'; }
+  // Contacts block for the popout and the full brief: each person with phone and email links.
+  function contactsBlockHtml(c){
+    var list = (contactsDetailByClinicId[c.id]||[]).slice();
+    if (!list.length) return c.contactNames ? esc(c.contactNames) : "";
+    return list.map(function(p){
+      var links = [];
+      if (p.phone) links.push(phoneLink(p.phone));
+      if (p.email) links.push(emailLink(p.email));
+      return '<div class="sc-person"><span class="sc-name">'+esc(p.name)+'</span>'+
+        (p.role ? ' <span class="sc-role">'+esc(p.role)+'</span>' : '')+
+        (links.length ? '<div class="sc-links">'+links.join('')+'</div>' : '')+'</div>';
+    }).join("");
+  }
+  function clinicContactRows(c){
+    var out = "";
+    if (c.phone) out += row("Clinic phone", phoneLink(c.phone));
+    if (c.email) out += row("Clinic email", emailLink(c.email));
+    return out;
+  }
   function openBrief(c){
     var s = stageColor[c.stage] || {color:"#8a8a8a"};
     var head = '<div class="sheet-stage" style="background:'+s.color+'">'+(c.stage||"Unknown")+'</div>'+dealPills(c);
@@ -1574,6 +1601,8 @@ body{font-family:var(--body);color:var(--ink);}
     if (c.nextAction) html += '<div class="sheet-next"><div class="lbl">Next Step</div><div class="val">'+esc(c.nextAction)+'</div></div>';
     var meta = [];
     if (c.address) meta.push(row("Address", esc(c.address)));
+    var cr = clinicContactRows(c); if (cr) meta.push(cr);
+    var cb = contactsBlockHtml(c); if (cb && !(contactsDetailByClinicId[c.id]||[]).length) meta.push(row("Contacts", cb));
     meta.push(hoursHtml(c));
     if (c.lastContact) meta.push(row("Last Contact", esc(c.lastContact)));
     if (c.nextMeeting) {
@@ -1617,7 +1646,9 @@ body{font-family:var(--body);color:var(--ink);}
     if (c.address) html += row("Address", esc(c.address));
     html += hoursHtml(c);
     if (c.website) html += row("Website", '<a href="'+esc(normalizeUrl(c.website))+'" target="_blank" rel="noopener">'+esc(c.website)+'</a>');
-    if (c.contactNames) html += row("Contacts", esc(c.contactNames));
+    html += clinicContactRows(c);
+    var cbs = contactsBlockHtml(c);
+    if (cbs) html += row("Contacts", cbs);
     if (c.qualified) html += row("Qualified", pill(c.qualified, QUALIFIED_COLORS));
     if (c.lastContact) html += row("Last Contact", esc(c.lastContact));
     if (c.notes) html += '<div class="sheet-notes">'+esc(c.notes)+'</div>';
