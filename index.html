@@ -435,11 +435,11 @@ body{font-family:var(--body);color:var(--ink);}
       <li><strong>iPhone:</strong> tap the Share icon in Safari, then "Add to Home Screen."</li>
       <li><strong>Android:</strong> tap the ⋮ menu in Chrome, then "Add to Home screen."</li>
     </ol>
-    <p>Pins are colored by Stage. Tap a chip to hide/show that stage. Tap a pin for details, directions, and a call button. The refresh icon pulls the latest from Airtable; it also auto-refreshes every 5 minutes while open.</p>
+    <p>Pins are colored by Stage. A pin with a second thin ring around it is a multi-location or franchise site, at any stage. Tap a chip to hide/show that stage. Tap a pin for details, directions, and a call button. The refresh icon pulls the latest from Airtable; it also auto-refreshes every 5 minutes while open.</p>
     <p>Your location dot only appears after you tap the circle button and allow location access; it is never sent anywhere, it's drawn from your phone's own GPS.</p>
     <p>The checklist icon opens your open Tasks and Clinic Next Actions, grouped by due date. Checking a box only marks it locally &mdash; nothing changes in Airtable until you tap "Update Airtable" at the bottom.</p>
     <p>The magnifying glass at the top opens search by clinic name or address. The list icon next to it opens every location A to Z, with sort and filters. The corner-brackets button at the bottom right zooms the map to fit all pins.</p>
-    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-11-09 contact phone and email in popout and brief v5</p>
+    <p style="font-size:11.5px;color:var(--ink-dim);">Version: 2026-11-12 multi-location double ring on pins v6</p>
     <button id="infoClose">Got it</button>
     <button id="resetKey" style="background:transparent;color:#b0413e;border:1px solid #b0413e;margin-top:10px;">Reset saved keys</button>
   </div>
@@ -544,7 +544,7 @@ body{font-family:var(--body);color:var(--ink);}
     name:"fldav47bI4XT5dkb3", stage:"fldNvkkh5aUeIpmZT", fit:"fldKZUvH2TdM7Ld2o",
     address:"fldWFIcsf0IHReFtx", lat:"flduCAwh8GOme6Pgg", lng:"fldagkN1z79b4wQn4",
     phone:"fldAx8T2wEb6NwmWv", website:"fldyexgBLmumzPu1S", notes:"fldZWk1z8NKDy16Tr",
-    gym:"fldFCMyxCkK3RUE2m", type:"fldYYsSmvWCdzdyKm", nextAction:"fldgNCT1yZp5NWxHB", lastContact:"fld7uhRSvyAOwRa3H", contacts:"fldw47jnu1OR7ZL45",
+    gym:"fldFCMyxCkK3RUE2m", multi:"fldlaD4M12pFPrqth", type:"fldYYsSmvWCdzdyKm", nextAction:"fldgNCT1yZp5NWxHB", lastContact:"fld7uhRSvyAOwRa3H", contacts:"fldw47jnu1OR7ZL45",
     qualified:"fld0SiKvkO12UfoEg", interest:"flde1WCOTSjvRAi6V", owner:"fldz8AKEDGn1TuKtW",
     activityLog:"fld2iM255ldam2YmP",
     profile:"fldPgzy6O2gq7zdCV", email:"fldqo1WXzP1YSZTm0", nextMeeting:"fld1eHqCpMUeqUlQG",
@@ -639,11 +639,24 @@ body{font-family:var(--body);color:var(--ink);}
     "Chiropractic":"chiro", "Wellness Center":"leaf", "Weight Loss Clinic":"scale"
   };
   var BADGE_LABELS = { gym:"Gym", hair:"Hair / nail salon", tan:"Tanning", spa:"Massage / day spa", chiro:"Chiropractic", leaf:"Wellness center", scale:"Weight loss" };
-  function pinSVG(s, size, badge, deals){
+  // Multi-location or franchise sites get a second, thinner ring around the pin, in the pin's own
+  // stage color, so it reads as its stage first and as multi-location second. A white underlay keeps
+  // the ring readable on the map. The triangle (Not Pursuing) is wider than the others, so its ring is larger.
+  function multiRing(s){
+    var cy = 12, r = 13.2;
+    if (s.shape === "triangle"){ cy = 13.3; r = 14.9; }
+    return '<circle cx="12" cy="'+cy+'" r="'+r+'" fill="none" stroke="#fff" stroke-width="3.4"/>'+
+           '<circle cx="12" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+s.color+'" stroke-width="1.7"/>';
+  }
+  function pinSVG(s, size, badge, deals, multi){
     var svg = pinSVGBase(s, size, deals);
     if (badge === true) badge = "gym";
-    if (!badge || !BADGE_GLYPHS[badge]) return svg;
-    return svg.replace('<svg ', '<svg style="overflow:visible" ').replace('</svg>', BADGE_WRAP_OPEN+BADGE_GLYPHS[badge]+'</g></svg>');
+    var hasBadge = !!(badge && BADGE_GLYPHS[badge]);
+    if (!hasBadge && !multi) return svg;
+    svg = svg.replace('<svg ', '<svg style="overflow:visible" ');
+    if (multi){ var ring = multiRing(s); svg = svg.replace(/(<svg[^>]*>)/, function(m){ return m + ring; }); }
+    if (hasBadge) svg = svg.replace('</svg>', BADGE_WRAP_OPEN+BADGE_GLYPHS[badge]+'</g></svg>');
+    return svg;
   }
   var DEAL_STYLES = {
     "B2B/Prescriber": {color:"#0f9d8a", letter:"B"},
@@ -997,6 +1010,8 @@ body{font-family:var(--body);color:var(--ink);}
       type: (f[F.type] && f[F.type].name) || (typeof f[F.type]==="string" ? f[F.type] : null),
       // Gym badge shows if either the Gym checkbox is ticked or Type is set to Gym.
       gym: !!f[F.gym] || ((f[F.type] && f[F.type].name) || f[F.type]) === "Gym",
+      // Multi-Location checkbox: draws a double ring around the pin at every stage.
+      multi: !!f[F.multi],
       badge: (f[F.gym] ? "gym" : (TYPE_BADGE[(f[F.type] && f[F.type].name) || f[F.type]] || "")),
       contactNames:((contactsByClinicId||{})[rec.id]||[]).join(", ")
     };
@@ -1161,7 +1176,7 @@ body{font-family:var(--body);color:var(--ink);}
       var s = stageColor[c.stage];
       var icon = L.divIcon({
         className:"pin",
-        html: pinSVG(s, s.shape==="star" ? 34 : 26, c.badge, s.shape==="star" ? c.deals : null),
+        html: pinSVG(s, s.shape==="star" ? 34 : 26, c.badge, s.shape==="star" ? c.deals : null, c.multi),
         iconSize: s.shape==="star" ? [34,34] : [28,28], iconAnchor: s.shape==="star" ? [17,17] : [14,14]
       });
       var m = L.marker([c.lat,c.lng], {icon:icon});
@@ -1636,7 +1651,7 @@ body{font-family:var(--body);color:var(--ink);}
   function openSheet(c){
     var s = stageColor[c.stage] || {color:"#8a8a8a"};
     var mapsQ = encodeURIComponent(c.address || (c.lat+","+c.lng));
-    var html = '<div class="sheet-stage" style="background:'+s.color+'">'+ (c.stage||"Unknown") + (c.gym ? ' &middot; Gym' : '') +'</div>'+dealPills(c);
+    var html = '<div class="sheet-stage" style="background:'+s.color+'">'+ (c.stage||"Unknown") + (c.gym ? ' &middot; Gym' : '') + (c.multi ? ' &middot; Multi-location' : '') +'</div>'+dealPills(c);
     if (c.type) html += '<span class="sheet-fit" style="background:'+(TYPE_COLORS[c.type]||TYPE_COLORS.Other).bg+';color:'+(TYPE_COLORS[c.type]||TYPE_COLORS.Other).fg+';border-color:transparent;">'+esc(c.type)+'</span>';
     if (c.fit) html += '<span class="sheet-fit">'+c.fit+'</span>';
     if (c.interest) html += pill(c.interest, INTEREST_COLORS);
@@ -1743,7 +1758,7 @@ body{font-family:var(--body);color:var(--ink);}
     routeMarkers = {};
     allRecords.forEach(function(c){
       var s = stageColor[c.stage] || {color:"#8a8a8a", shape:"circle"};
-      var icon = L.divIcon({ className:"pin", html:pinSVG(s, 24, c.badge), iconSize:[26,26], iconAnchor:[13,13] });
+      var icon = L.divIcon({ className:"pin", html:pinSVG(s, 24, c.badge, null, c.multi), iconSize:[26,26], iconAnchor:[13,13] });
       var m = L.marker([c.lat,c.lng], {icon:icon});
       m.on("click", function(){ toggleStopFromClinic(c); });
       m.addTo(routeMarkersLayer);
@@ -2336,7 +2351,7 @@ body{font-family:var(--body);color:var(--ink);}
     hits.slice(0, 8).forEach(function(c){
       var d = document.createElement("div");
       d.className = "sr-item";
-      d.innerHTML = '<div class="sr-pin">'+pinSVG(stageOf(c), 22, c.badge)+'</div>'+
+      d.innerHTML = '<div class="sr-pin">'+pinSVG(stageOf(c), 22, c.badge, null, c.multi)+'</div>'+
         '<div><div class="sr-name">'+esc(c.name)+'</div><div class="sr-sub">'+esc((c.stage||"Unknown")+(c.address ? " · "+c.address : ""))+'</div></div>';
       d.onclick = function(){ closeSearch(); focusOnClinic(c); };
       box.appendChild(d);
@@ -2450,6 +2465,7 @@ body{font-family:var(--body);color:var(--ink);}
     var tags = "";
     if (c.type) tags += pill(c.type, TYPE_COLORS);
     else if (c.gym) tags += pill("Gym", TYPE_COLORS);
+    if (c.multi) tags += '<span class="pill" style="background:#e6dcff;color:#4b2a8a;">Multi-location</span>';
     if (c.fit) tags += '<span class="pill" style="background:#eeeeee;color:#4a4a4a;">'+esc(c.fit)+'</span>';
     if (c.interest) tags += pill(c.interest, INTEREST_COLORS);
     (c.owner||[]).forEach(function(o){ tags += pill(o, OWNER_COLORS); });
@@ -2458,7 +2474,7 @@ body{font-family:var(--body);color:var(--ink);}
     if (r.overdue) side += '<span class="pill" style="background:#ffc2cc;color:#8a1f30;">'+r.overdue+' overdue</span>';
     else if (r.open) side += '<span class="pill" style="background:#fff3c4;color:#7a5b00;">'+r.open+' open</span>';
     d.innerHTML =
-      '<div class="loc-pin">'+pinSVG(stageOf(c), 24, c.badge)+'</div>'+
+      '<div class="loc-pin">'+pinSVG(stageOf(c), 24, c.badge, null, c.multi)+'</div>'+
       '<div class="loc-main"><div class="loc-name">'+esc(c.name)+'</div>'+
         '<div class="loc-sub">'+esc((c.stage||"Unknown")+(c.address ? " · "+c.address : ""))+'</div>'+
         (tags ? '<div class="loc-tags">'+tags+'</div>' : '')+'</div>'+
@@ -2482,6 +2498,7 @@ body{font-family:var(--body);color:var(--ink);}
       ["Stage", function(c){ return c.stage; }],
       ["Type", function(c){ return c.type || (c.gym ? "Gym" : ""); }],
       ["Fit", function(c){ return c.fit; }],
+      ["Multi-Location", function(c){ return c.multi ? "Yes" : ""; }],
       ["Interest", function(c){ return c.interest; }],
       ["Owner", function(c){ return (c.owner||[]).join("; "); }],
       ["Address", function(c){ return c.address; }],
